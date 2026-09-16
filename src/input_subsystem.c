@@ -54,7 +54,7 @@ static char scan_to_ascii[128] = {
     [0x33] = ',',
     [0x34] = '.',
     [0x35] = '-',
-    [0x39] = ' '
+    [0x39] = ' ',
 };
 
 static char scan_to_ascii_shift[128] = {

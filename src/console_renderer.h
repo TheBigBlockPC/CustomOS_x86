@@ -7,5 +7,5 @@ typedef struct {
 } terminal_character;
 
 void set_FB(uint32_t *fb_base, uint16_t w, uint16_t h);
-void draw_chars(terminal_character *viewport);
+void draw_chars(terminal_character *viewport, int cursor_x, int cursor_y);
 #endif

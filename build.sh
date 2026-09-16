@@ -15,6 +15,7 @@ clang \
   src/console.c \
   src/kernel.c \
   src/drivers/keyboard_ps2.c \
-  src/input_subsystem.c
+  src/input_subsystem.c \
+  src/tty.c
 
 cp bootx64.efi ./test_env/EFI/BOOT/

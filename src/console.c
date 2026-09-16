@@ -34,14 +34,23 @@ static void autoscroll(){
         }
     }
 }
-
+static void update_renderer(){
+    draw_chars(terminal,cursor_x,cursor_y);
+}
 static void put(char c, uint8_t color){
     int index = cursor_x + cursor_y * TERMINAL_W;
     if(c == '\n'){
         cursor_x = 0;
         cursor_y++;
         autoscroll();
-        draw_chars(terminal);
+        update_renderer();
+        return;
+    }
+    if(c == '\b'){
+        cursor_x--;
+        fixup_cursor();
+        autoscroll();
+        update_renderer();
         return;
     }
     terminal[index] = (terminal_character){
@@ -51,7 +60,7 @@ static void put(char c, uint8_t color){
     cursor_x++;
     fixup_cursor();
     autoscroll();
-    draw_chars(terminal);
+    update_renderer();
 }
 
 void con_clear(){
@@ -61,7 +70,7 @@ void con_clear(){
             .color = 0
         };
     }
-    draw_chars(terminal);
+    update_renderer();
 }
 
 void con_write(char* string, uint8_t color){
@@ -69,4 +78,13 @@ void con_write(char* string, uint8_t color){
         put(*string,color);
         ++string;
     }
+}
+
+void con_delete_cell(){
+    int index = cursor_x + cursor_y * TERMINAL_W;
+    while(terminal[index].character != 0){
+        terminal[index].character = terminal[index+1].character;
+        index++;
+    }
+    update_renderer();
 }

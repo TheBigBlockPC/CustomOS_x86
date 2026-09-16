@@ -8,6 +8,9 @@
 
 static terminal_character terminal_current[TERMINAL_W*TERMINAL_H];
 
+static int prev_cursor_x;
+static int prev_cursor_y;
+
 static uint32_t colors[16] = {
     0x000000,
     0xFF0000,
@@ -64,7 +67,7 @@ void set_FB(uint32_t *fb_base, uint16_t w, uint16_t h){
     fb = fb_base;
 }
 
-void draw_chars(terminal_character *viewport){
+void draw_chars(terminal_character *viewport, int cursor_x, int cursor_y){
     int offset_x = (width - 64*16)/2;
     int offset_y = (height - 40*16)/2;
     
@@ -76,7 +79,9 @@ void draw_chars(terminal_character *viewport){
             
             if(
                 current.character != tc.character ||
-                current.color != tc.color
+                current.color != tc.color ||
+                (cursor_x == x && cursor_y == y) ||
+                (prev_cursor_x == x && prev_cursor_y == y)
             ){
                 terminal_current[y*64+x] = tc;
                 draw_glyph(fb,x*16+offset_x, y*16+offset_y,
@@ -84,7 +89,19 @@ void draw_chars(terminal_character *viewport){
                     colors[color & 0x0F],
                     colors[(color >> 4) & 0x0F]
                 );
-            }        
+            }
+            if(cursor_x == x && cursor_y == y){
+                int base = (x*16 + offset_x)+(y*16 + offset_y)*width;
+                for(int i=0;i<16;i++){
+                    fb[base+i] = 0x00FFFFFF;
+                    fb[base+i+15*width] = 0x00FFFFFF;
+                    fb[base+i*width] = 0x00FFFFFF;
+                    fb[base+i*width+15] = 0x00FFFFFF;
+                }
+            }
         }
     }
+
+    prev_cursor_x = cursor_x;
+    prev_cursor_y = cursor_y;
 }

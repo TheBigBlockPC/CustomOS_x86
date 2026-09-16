@@ -2,4 +2,5 @@
 #define CONSOLE_H
 void con_clear();
 void con_write(char* string, uint8_t color);
+void con_delete_cell();
 #endif
