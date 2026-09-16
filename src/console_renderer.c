@@ -1,5 +1,6 @@
 #include "types.h"
-#include "font8x8_basic.h"
+//#include "font8x8_basic.h"
+#include "font8x8_256.h"
 #include "console_renderer.h"
 
 #define TERMINAL_W 64
@@ -41,11 +42,12 @@ static void fill_rect(uint32_t *fb_base, int x, int y, int w, int h, uint32_t co
 static void draw_glyph(uint32_t *fb_base, int x, int y, char glyph, uint32_t fg_color, uint32_t bg_color){
     for(int py=0;py<8;py++){
         uint8_t row = 0x00;
-        if(glyph >= 0){
-            row = font8x8_basic[glyph][py];
-        }else{
-            row = font8x8_basic[128][py];
-        }
+        row = font8x8_256[(unsigned char)glyph][py];
+        //if(glyph >= 0){
+        //    row = font8x8_basic[glyph][py];
+        //}else{
+        //    row = font8x8_basic[128][py];
+        //}
         for(int px=0;px<8;px++){
             if(row & (1 << px)){
                 fill_rect(fb_base,x+px*2,y+py*2,2,2,fg_color);
