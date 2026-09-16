@@ -41,6 +41,7 @@ static void put(char c, uint8_t color){
         cursor_x = 0;
         cursor_y++;
         autoscroll();
+        draw_chars(terminal);
         return;
     }
     terminal[index] = (terminal_character){
