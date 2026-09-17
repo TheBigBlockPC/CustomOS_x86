@@ -10,7 +10,7 @@ void on_input(char* input){
     tty_allow_input();
 }
 
-int k_main(){
+void k_main(){
     con_write("kernel running\n",0x07);
     tty_init();
     tty_set_send_event(&on_input);
@@ -20,5 +20,5 @@ int k_main(){
         poll_events();
     }
     
-    return 0;
+    return;
 }

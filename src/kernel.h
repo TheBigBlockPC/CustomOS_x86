@@ -1,4 +1,4 @@
 #ifndef KERNEL_H
 #define KERNEL_H
-int k_main();
+void k_main();
 #endif

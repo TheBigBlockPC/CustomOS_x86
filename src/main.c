@@ -4,6 +4,7 @@
 #include "console.h"
 #include "kernel.h"
 #include "memory.h"
+#include "cpu.h"
 #define FALSE 0
 
 void print_uint64(uint64_t val){
@@ -108,7 +109,7 @@ efi_status_t efi_main(efi_handle_t ImageHandle, efi_system_table_t *SystemTable)
     // POSIX-UEFI maps the Mode structure layout to match the UEFI standard spec
     uint32_t *fb_base = (uint32_t *)gop->Mode->FrameBufferBase;
     uintn_t fb_size   = gop->Mode->FrameBufferSize;
-    width = gop->Mode->Information->HorizontalResolution;
+    width = gop->Mode->Information->PixelsPerScanLine;
     height = gop->Mode->Information->VerticalResolution;
     if (fb_base == 0) {
         SystemTable->ConOut->OutputString(SystemTable->ConOut, L"Error: Framebuffer base is null!\r\n");
@@ -136,12 +137,7 @@ efi_status_t efi_main(efi_handle_t ImageHandle, efi_system_table_t *SystemTable)
     }
     con_write("Exiting boot services sucsessful\n",0x07);
     
-    int k_status = k_main();
-    if(k_status == 0){
-        con_write("Kernel has exited\n",0x07);
-    }else{
-        con_write("Kernel has exited with non zero status\n",0x01);
-    }
+    cpu_enter_kernel(k_main);
     // 5. Infinite loop to look at your blue screen
     while (1) {
         __asm__ __volatile__("hlt");
