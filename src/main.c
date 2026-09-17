@@ -3,7 +3,19 @@
 #include "console_renderer.h"
 #include "console.h"
 #include "kernel.h"
+#include "memory.h"
 #define FALSE 0
+
+void print_uint64(uint64_t val){
+    char hex_chars[16] = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
+    con_write("0x",0x07);
+    for(int i=0;i<8;i++){
+        int shift = (7-i)*4;
+        uint8_t digit = (val >> shift) & 0x0F;
+        char seq[2] = {hex_chars[digit],0x00};
+        con_write((char*)(&seq[0]),0x07);
+    }
+}
 
 // Define the GOP GUID manually if your version of uefi.h doesn't export it globally
 // {9042A9DE-23DC-4a38-96FB-7DEE0FA1B394}
@@ -45,6 +57,25 @@ int exit_bootservices(efi_handle_t ImageHandle, efi_system_table_t *SystemTable)
         BS->FreePool(MemoryMap);
         return 1;
     }
+
+    uintn_t descriptor_count = MemoryMapSize / DescriptorSize;
+    for(uintn_t i = 0; i < descriptor_count; i++){
+        efi_memory_descriptor_t *desc = (efi_memory_descriptor_t *)((uint8_t*)MemoryMap + i * DescriptorSize);
+        if( desc->Type == EfiConventionalMemory){
+            efi_physical_address_t start = desc->PhysicalStart;
+            uint64_t page_count = desc->NumberOfPages;
+            con_write("found descriptor ",0x02);
+            print_uint64(start);
+            con_write(" ",0x02);
+            print_uint64(page_count);
+            con_write("\n",0x02);
+            mem_add_free_pages(start,page_count);
+        }
+    }
+    uint64_t free_memory = mem_get_memory_size();
+    con_write("Memory: ",0x02);
+    print_uint64(free_memory/1024/1024);
+    con_write(" MB\n",0x07);
 
     // 5. Exit Boot Services immediately (no print or allocation statements between step 4 and 5)
     Status = BS->ExitBootServices(ImageHandle, MapKey);

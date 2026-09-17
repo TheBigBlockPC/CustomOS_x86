@@ -30,4 +30,11 @@ typedef unsigned long long  uintptr_t;
 #endif
 #endif
 
+typedef uint64_t size_t;
+
+typedef struct {
+    uint64_t start;
+    uint64_t page_count;
+} FreeRange;
+
 #endif
