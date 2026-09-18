@@ -22,7 +22,7 @@ static void autoscroll(){
     
     if(cursor_y > TERMINAL_H-1){
         int scroll = cursor_y - (TERMINAL_H-1);
-        cursor_y = TERMINAL_H-2;
+        cursor_y = TERMINAL_H-1;
 
         int offset = TERMINAL_W * scroll;
         int n_elements = (TERMINAL_W*TERMINAL_H);// - offset;
