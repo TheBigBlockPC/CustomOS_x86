@@ -18,6 +18,22 @@ void print_uint64(uint64_t val){
     }
 }
 
+void print_uint64_dec(uint64_t val){
+    char dec_chars[10] = {'0','1','2','3','4','5','6','7','8','9'};
+    int digits = 0;
+    char buf[32];
+    uint64_t val_temp = val;
+    for(int i =0;i<32;i++){
+        buf[i] = 0;
+    }
+    while(val_temp != 0){
+        uint64_t digit = val_temp % 10;
+        buf[31-digits] = dec_chars[digit];
+        digits++;
+        val_temp /= 10;
+    }
+    con_write((char*)(&buf[32-digits]),0x07);
+}
 // Define the GOP GUID manually if your version of uefi.h doesn't export it globally
 // {9042A9DE-23DC-4a38-96FB-7DEE0FA1B394}
 static efi_guid_t gop_guid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
@@ -75,7 +91,7 @@ int exit_bootservices(efi_handle_t ImageHandle, efi_system_table_t *SystemTable)
     }
     uint64_t free_memory = mem_get_memory_size();
     con_write("Memory: ",0x02);
-    print_uint64(free_memory/1024/1024);
+    print_uint64_dec(free_memory/1024/1024);
     con_write(" MB\n",0x07);
 
     // 5. Exit Boot Services immediately (no print or allocation statements between step 4 and 5)
