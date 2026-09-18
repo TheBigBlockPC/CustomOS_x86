@@ -10,4 +10,6 @@ qemu-system-x86_64 \
   -cpu host \
   -drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd \
   -drive if=pflash,format=raw,file=./BIOS/OVMF_VARS.fd \
-  -drive format=raw,file=fat:rw:test_env -vga std
+  -drive format=raw,file=fat:rw:test_env -vga std \
+  -no-reboot -d int,cpu_reset,guest_errors  \
+  -D qemu.log

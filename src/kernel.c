@@ -2,6 +2,7 @@
 #include "console.h"
 #include "input_subsystem.h"
 #include "tty.h"
+#include "paging.h"
 
 void on_input(char* input){
     con_write("Echo: ",0x07);
@@ -11,6 +12,8 @@ void on_input(char* input){
 }
 
 void k_main(){
+
+    set_mmu();
     con_write("kernel running\n",0x07);
     tty_init();
     tty_set_send_event(&on_input);
