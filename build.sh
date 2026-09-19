@@ -9,6 +9,8 @@ clang \
   -Wl,-entry:efi_main \
   -Wl,-subsystem:efi_application \
   -fuse-ld=lld \
+  -ffreestanding \
+  -mno-red-zone \
   -o bootx64.efi \
   src/main.c \
   src/console_renderer.c \
@@ -20,6 +22,10 @@ clang \
   src/memory.c \
   src/cpu.c \
   src/paging.c \
-  src/util.c
+  src/util.c \
+  src/gdt/gdt.c \
+  src/gdt/gdt.S \
+  src/interrupts/interrupts.c \
+  src/interrupts/interrupts.S \
 
 cp bootx64.efi ./test_env/EFI/BOOT/
