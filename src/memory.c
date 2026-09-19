@@ -1,16 +1,22 @@
 #include "types.h"
 #include "memory.h"
 #include "console.h"
+#include "paging.h"
+#include "util.h"
 
 #define MAX_FREE_RANGES 128
 #define PAGE_SIZE 4096
+#define PAGE_SIZE_2M   0x200000ULL
+#define PAGE_2M_ADDR_MASK     0x000FFFFFFFE00000ULL
+
+#define HHFM_BASE 0xffff800000000000ULL
 
 static FreeRange free_ranges[MAX_FREE_RANGES];
 static size_t free_range_count = 0;
 static uint64_t total_page_count = 0;
 
 static uint64_t bitmap_phys;
-static uint8_t* page_bitmap;
+//static uint8_t* page_bitmap;
 static uint64_t free_page_count = 0;
 
 void mem_add_free_pages(uint64_t start, uint64_t page_count){
@@ -57,10 +63,6 @@ static uint64_t get_highest_page() {
     return last_range.start / PAGE_SIZE + last_range.page_count;
 }
 
-static uint64_t int_div_round_up(uint64_t a, uint64_t b){
-    return a / b + (a % b != 0);
-}
-
 static uint64_t allocate_bitmap(uint64_t page_count){
     for(int i = 0; i < free_range_count; i++){
         FreeRange r = free_ranges[i];
@@ -76,20 +78,31 @@ static uint64_t allocate_bitmap(uint64_t page_count){
     while(1){}
 }
 
+static inline uint8_t* get_page_bitmap(){
+    if(get_mmu_active()){
+        return (uint8_t*)(bitmap_phys+HHFM_BASE);
+    }else{
+        return (uint8_t*)bitmap_phys;
+    }
+}
+
 static inline void bitmap_set(uint64_t page)
 {
+    uint8_t* page_bitmap = get_page_bitmap();
     page_bitmap[page / 8] |=
         (1u << (page % 8));
 }
 
 static inline void bitmap_clear(uint64_t page)
 {
+    uint8_t* page_bitmap = get_page_bitmap();
     page_bitmap[page / 8] &=
         ~(1u << (page % 8));
 }
 
 static inline int bitmap_test(uint64_t page)
 {
+    uint8_t* page_bitmap = get_page_bitmap();
     return
         (page_bitmap[page / 8] >>
          (page % 8)) & 1;
@@ -127,7 +140,7 @@ void init_memory_subsystem(){
     print_uint64(bitmap_phys);
     con_write("\n",0x07);
 
-    page_bitmap = (uint8_t*)bitmap_phys;
+    uint8_t* page_bitmap = get_page_bitmap();
     for (uint64_t i = 0; i < bitmap_size; i++){
         page_bitmap[i] = 0xFF;
     }
@@ -182,4 +195,17 @@ void mem_free_page(uint64_t address){
 
     bitmap_clear(page);
     free_page_count++;
+}
+
+void setup_hhdm(){
+    for(int i=0;i<free_range_count;i++){
+        FreeRange r = free_ranges[i];
+        uint64_t n_chunks =int_div_round_up(r.page_count*PAGE_SIZE,PAGE_SIZE_2M) + 1;
+        uint64_t base = r.start & PAGE_2M_ADDR_MASK;
+        for(uint64_t chunk=0; chunk < n_chunks; chunk ++){
+            uint64_t addr = base + PAGE_SIZE_2M*chunk;
+            mmu_map_2m(HHFM_BASE+addr,addr);
+        }
+    }
+
 }

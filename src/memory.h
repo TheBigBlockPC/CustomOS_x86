@@ -6,4 +6,5 @@ uint64_t mem_get_memory_size();
 void init_memory_subsystem();
 uint64_t mem_alloc_page(void);
 void mem_free_page(uint64_t address);
+void setup_hhdm();
 #endif

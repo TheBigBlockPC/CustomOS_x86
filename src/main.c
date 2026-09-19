@@ -5,6 +5,7 @@
 #include "kernel.h"
 #include "memory.h"
 #include "cpu.h"
+#include "util.h"
 
 #include "paging.h"
 #define FALSE 0
@@ -52,10 +53,6 @@ static efi_guid_t gop_guid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
 static efi_guid_t gEfiLoadedImageProtocolGuid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
 uintn_t width;
 uintn_t height;
-
-static uint64_t int_div_round_up(uint64_t a, uint64_t b){
-    return a / b + (a % b != 0);
-}
 
 #define PAGE_SIZE_2M   0x200000ULL
 

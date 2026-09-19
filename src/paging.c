@@ -17,6 +17,7 @@
 
 #define PAGE_TABLE_ADDR_MASK  0x000FFFFFFFFFF000ULL
 #define PAGE_2M_ADDR_MASK     0x000FFFFFFFE00000ULL
+#define VAL_2M_ADDR_MASK     0xFFFFFFFFFFE00000ULL
 
 typedef uint64_t pte_t;
 
@@ -28,12 +29,14 @@ typedef struct {
 static page_table_t PML4
     __attribute__((aligned(4096)));
 
+static uint8_t mmu_active = 0;
+
 static uint64_t get_PDP(uint16_t index){
     pte_t entry = PML4.entries[index];
     if(entry & PAGE_PRESENT){
         return entry & PAGE_TABLE_ADDR_MASK;
     }else{
-        con_write("allocated a PDP\n",0x02);
+        //con_write("allocated a PDP\n",0x02);
         uint64_t PDP_addr = mem_alloc_page();
         PML4.entries[index] = PDP_addr & PAGE_TABLE_ADDR_MASK | PAGE_PRESENT | PAGE_RW;
         return PDP_addr;
@@ -46,7 +49,7 @@ static uint64_t get_PD(uint64_t pdp_base,uint16_t index){
     if(entry & PAGE_PRESENT){
         return entry & PAGE_TABLE_ADDR_MASK;
     }else{
-        con_write("allocated a PD\n",0x02);
+        //con_write("allocated a PD\n",0x02);
         uint64_t PD_addr = mem_alloc_page();
         pdp->entries[index] = PD_addr & PAGE_TABLE_ADDR_MASK | PAGE_PRESENT | PAGE_RW;
         return PD_addr;
@@ -54,17 +57,31 @@ static uint64_t get_PD(uint64_t pdp_base,uint16_t index){
 }
 static void set_PD_entry(uint64_t pd_base,uint16_t index,uint64_t addr){
     page_table_t* pdp = (page_table_t*)pd_base;
-    pdp->entries[index] = addr & PAGE_2M_ADDR_MASK | PAGE_PRESENT | PAGE_RW | PAGE_PS;
+    uint64_t new_val = addr & PAGE_2M_ADDR_MASK | PAGE_PRESENT | PAGE_RW | PAGE_PS;
+    if((pdp->entries[index] & PAGE_PRESENT) && (pdp->entries[index] != new_val)){
+        con_write("overlapping page \n",0x03);
+    }
+    pdp->entries[index] = new_val;
 }
 
-void identitymap_2m(uint64_t physical_addr){
-    uint16_t pml4_index = (physical_addr >> 39) & 0x1FF;
-    uint16_t pdp = (physical_addr >> 30) & 0x1FF;
-    uint16_t pd = (physical_addr >> 21) & 0x1FF;
+void mmu_map_2m(uint64_t virtual_addr,uint64_t physical_addr){
+    if(physical_addr & ~VAL_2M_ADDR_MASK){
+        con_write("the physical adress must align in 2 mb\n",0x01);
+    }
+    if(virtual_addr & ~VAL_2M_ADDR_MASK){
+        con_write("the virtual adress must align in 2 mb\n",0x01);
+    }
+    uint16_t pml4_index = (virtual_addr >> 39) & 0x1FF;
+    uint16_t pdp = (virtual_addr >> 30) & 0x1FF;
+    uint16_t pd = (virtual_addr >> 21) & 0x1FF;
 
     uint64_t pdp_base = get_PDP(pml4_index);
     uint64_t pd_base = get_PD(pdp_base,pdp);
     set_PD_entry(pd_base,pd,physical_addr);
+}
+
+void identitymap_2m(uint64_t physical_addr){
+    mmu_map_2m(physical_addr,physical_addr);
 }
 
 static inline void load_cr3(uint64_t pml4_phys)
@@ -82,4 +99,9 @@ static inline void load_cr3(uint64_t pml4_phys)
 void set_mmu(){
     uint64_t pml4_phys = (uint64_t)(&PML4);
     load_cr3(pml4_phys);
+    mmu_active = 1;
+}
+
+int get_mmu_active(){
+    return mmu_active == 1;
 }

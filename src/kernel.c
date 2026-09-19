@@ -3,7 +3,7 @@
 #include "input_subsystem.h"
 #include "tty.h"
 #include "paging.h"
-
+#include "memory.h"
 void on_input(char* input){
     con_write("Echo: ",0x07);
     con_write(input,0x01);
@@ -12,7 +12,7 @@ void on_input(char* input){
 }
 
 void k_main(){
-
+    setup_hhdm();
     set_mmu();
     con_write("kernel running\n",0x07);
     tty_init();

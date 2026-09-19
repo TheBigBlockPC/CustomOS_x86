@@ -19,6 +19,7 @@ clang \
   src/tty.c \
   src/memory.c \
   src/cpu.c \
-  src/paging.c
+  src/paging.c \
+  src/util.c
 
 cp bootx64.efi ./test_env/EFI/BOOT/
