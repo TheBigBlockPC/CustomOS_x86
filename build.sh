@@ -27,5 +27,8 @@ clang \
   src/gdt/gdt.S \
   src/interrupts/interrupts.c \
   src/interrupts/interrupts.S \
+  src/panic.c \
+  src/acpi.c \
+  src/pcie.c
 
 cp bootx64.efi ./test_env/EFI/BOOT/

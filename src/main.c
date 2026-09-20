@@ -6,30 +6,11 @@
 #include "memory.h"
 #include "cpu.h"
 #include "util.h"
+#include "panic.h"
+#include "acpi.h"
 
 #include "paging.h"
 #define FALSE 0
-
-void print_uint64(uint64_t val){
-    char hex_chars[16] = {
-        '0','1','2','3','4','5','6','7',
-        '8','9','A','B','C','D','E','F'
-    };
-
-    con_write("0x", 0x07);
-
-    for(int i = 0; i < 16; i++){
-        int shift = (15 - i) * 4;
-        uint8_t digit = (val >> shift) & 0x0F;
-
-        char seq[2] = {
-            hex_chars[digit],
-            '\0'
-        };
-
-        con_write(seq, 0x07);
-    }
-}
 
 void print_uint64_dec(uint64_t val){
     char dec_chars[10] = {'0','1','2','3','4','5','6','7','8','9'};
@@ -51,10 +32,35 @@ void print_uint64_dec(uint64_t val){
 // {9042A9DE-23DC-4a38-96FB-7DEE0FA1B394}
 static efi_guid_t gop_guid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
 static efi_guid_t gEfiLoadedImageProtocolGuid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
+static efi_guid_t acpi20_guid = ACPI_20_TABLE_GUID;
 uintn_t width;
 uintn_t height;
 
 #define PAGE_SIZE_2M   0x200000ULL
+#define PAGE_2M_ADDR_MASK     0x000FFFFFFFE00000ULL
+int guid_equal(const efi_guid_t *a, const efi_guid_t *b)
+{
+    if (a->Data1 != b->Data1) return 0;
+    if (a->Data2 != b->Data2) return 0;
+    if (a->Data3 != b->Data3) return 0;
+
+    for (int i = 0; i < 8; i++) {
+        if (a->Data4[i] != b->Data4[i])
+            return 0;
+    }
+
+    return 1;
+}
+
+void* get_rsdp(efi_system_table_t *SystemTable){
+    for(uintn_t i = 0;i < SystemTable->NumberOfTableEntries; i++){
+        efi_configuration_table_t *table = &SystemTable->ConfigurationTable[i];
+        if (guid_equal(&table->VendorGuid, &acpi20_guid)) {
+            return table->VendorTable;
+        }
+    }
+    panic("RSP not found");
+}
 
 int exit_bootservices(efi_handle_t ImageHandle, efi_system_table_t *SystemTable){
     efi_status_t Status;
@@ -75,16 +81,14 @@ int exit_bootservices(efi_handle_t ImageHandle, efi_system_table_t *SystemTable)
         );
     
     if (EFI_ERROR(status)) {
-        con_write("Failed: ERROR",0x01);
-        return 1;
+        panic("Failed: ERROR");
     }
 
 
     // 1. Get the required buffer size
     Status = BS->GetMemoryMap(&MemoryMapSize, MemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
     if (Status != EFI_BUFFER_TOO_SMALL) {
-        con_write("Failed: EFI_BUFFER_TOO_SMALL",0x01);
-        return 1;
+        panic("Failed: EFI_BUFFER_TOO_SMALL");
     }
 
     // 2. Add extra padding because the allocation itself can alter the memory map
@@ -93,16 +97,14 @@ int exit_bootservices(efi_handle_t ImageHandle, efi_system_table_t *SystemTable)
     // 3. Allocate the buffer using the raw pointer function
     Status = BS->AllocatePool(EfiLoaderData, MemoryMapSize, (void**)&MemoryMap);
     if (Status != EFI_SUCCESS) {
-        con_write("Failed to allocate buffer",0x01);
-        return 1;
+        panic("Failed to allocate buffer");
     }
 
     // 4. Get the fresh memory map and the valid MapKey
     Status = BS->GetMemoryMap(&MemoryMapSize, MemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
     if (Status != EFI_SUCCESS) {
-        con_write("Failed to get memory map",0x01);
         BS->FreePool(MemoryMap);
-        return 1;
+        panic("Failed to get memory map");
     }
 
     uintn_t descriptor_count = MemoryMapSize / DescriptorSize;
@@ -127,15 +129,15 @@ int exit_bootservices(efi_handle_t ImageHandle, efi_system_table_t *SystemTable)
     // 5. Exit Boot Services immediately (no print or allocation statements between step 4 and 5)
     Status = BS->ExitBootServices(ImageHandle, MapKey);
     if (Status != EFI_SUCCESS) {
-        con_write("Failed to exit boot services",0x01);
         // If it fails (e.g., timer interrupt changed the map), you must retry step 4 and 5
         BS->FreePool(MemoryMap);
-        return 1;
+        panic("Failed to exit boot services");
     }
+    con_write("Exiting boot services sucsessful\n",0x07);
 
     init_memory_subsystem();
 
-    uint64_t image_base = (uint64_t)image->ImageBase;
+    uint64_t image_base = (uint64_t)image->ImageBase & PAGE_2M_ADDR_MASK;
     uint64_t image_size = image->ImageSize;
     uint64_t mb_chunks = int_div_round_up(image_size,PAGE_SIZE_2M);
     con_write("EFI image base: ",0x02);
@@ -150,6 +152,9 @@ int exit_bootservices(efi_handle_t ImageHandle, efi_system_table_t *SystemTable)
         identitymap_2m(image_base + i * PAGE_SIZE_2M);
     }
     
+    void* rsdp = get_rsdp(SystemTable);
+    set_rsdp(rsdp);
+    print_acpi_sig();
     return 0;
 }
 
@@ -202,7 +207,6 @@ efi_status_t efi_main(efi_handle_t ImageHandle, efi_system_table_t *SystemTable)
             __asm__ __volatile__("hlt");
         }
     }
-    con_write("Exiting boot services sucsessful\n",0x07);
 
     uint64_t mb_chunks = int_div_round_up(fb_size,PAGE_SIZE_2M);
     for(int i=0;i<mb_chunks+1;i++){

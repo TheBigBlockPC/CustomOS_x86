@@ -37,4 +37,6 @@ typedef struct {
     uint64_t page_count;
 } FreeRange;
 
+typedef uint8_t bool;
+
 #endif

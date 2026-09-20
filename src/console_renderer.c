@@ -68,8 +68,8 @@ void set_FB(uint32_t *fb_base, uint16_t w, uint16_t h){
 }
 
 void draw_chars(terminal_character *viewport, int cursor_x, int cursor_y){
-    int offset_x = (width - 64*16)/2 * 0;
-    int offset_y = (height - 40*16)/2 * 0;
+    int offset_x = (width - 64*16)/2;
+    int offset_y = (height - 40*16)/2;
     
     for(int y=0;y<40;y++){
         for(int x=0;x<64;x++){

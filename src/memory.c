@@ -3,13 +3,14 @@
 #include "console.h"
 #include "paging.h"
 #include "util.h"
+#include "panic.h"
 
 #define MAX_FREE_RANGES 128
 #define PAGE_SIZE 4096
 #define PAGE_SIZE_2M   0x200000ULL
 #define PAGE_2M_ADDR_MASK     0x000FFFFFFFE00000ULL
 
-#define HHFM_BASE 0xffff800000000000ULL
+#define HHDM_BASE 0xffff800000000000ULL
 
 static FreeRange free_ranges[MAX_FREE_RANGES];
 static size_t free_range_count = 0;
@@ -37,27 +38,6 @@ uint64_t mem_get_memory_size(){
     return total_page_count * PAGE_SIZE;
 }
 
-static void print_uint64(uint64_t val){
-    char hex_chars[16] = {
-        '0','1','2','3','4','5','6','7',
-        '8','9','A','B','C','D','E','F'
-    };
-
-    con_write("0x", 0x07);
-
-    for(int i = 0; i < 16; i++){
-        int shift = (15 - i) * 4;
-        uint8_t digit = (val >> shift) & 0x0F;
-
-        char seq[2] = {
-            hex_chars[digit],
-            '\0'
-        };
-
-        con_write(seq, 0x07);
-    }
-}
-
 static uint64_t get_highest_page() {
     FreeRange last_range = free_ranges[free_range_count-1];
     return last_range.start / PAGE_SIZE + last_range.page_count;
@@ -80,9 +60,17 @@ static uint64_t allocate_bitmap(uint64_t page_count){
 
 static inline uint8_t* get_page_bitmap(){
     if(get_mmu_active()){
-        return (uint8_t*)(bitmap_phys+HHFM_BASE);
+        return (uint8_t*)(bitmap_phys+HHDM_BASE);
     }else{
         return (uint8_t*)bitmap_phys;
+    }
+}
+
+static void clear_page(uint64_t phys){
+    uint64_t hhdm_offset = get_mmu_active() * HHDM_BASE;
+    for(uint64_t offset = 0;offset < PAGE_SIZE;offset++){
+        uint8_t* addr = (uint8_t*)(phys+offset+ hhdm_offset);
+        *addr = 0;
     }
 }
 
@@ -160,7 +148,7 @@ void init_memory_subsystem(){
 uint64_t mem_alloc_page(void)
 {
     if (free_page_count == 0){
-        con_write("failed to allocate page: OOM",0x01);
+        panic("failed to allocate page: OOM");
         return 0;
     }
     for (uint64_t page = 0;
@@ -169,12 +157,12 @@ uint64_t mem_alloc_page(void)
     {
         if (!bitmap_test(page)) {
             bitmap_set(page);
+            clear_page(page * PAGE_SIZE);
             free_page_count--;
             return page * PAGE_SIZE;
         }
     }
-    con_write("failed to allocate page: OOM",0x01);
-    return 0;
+    panic("failed to allocate page: OOM");
 }
 
 void mem_free_page(uint64_t address){
@@ -198,14 +186,29 @@ void mem_free_page(uint64_t address){
 }
 
 void setup_hhdm(){
+    
     for(int i=0;i<free_range_count;i++){
         FreeRange r = free_ranges[i];
         uint64_t n_chunks =int_div_round_up(r.page_count*PAGE_SIZE,PAGE_SIZE_2M) + 1;
         uint64_t base = r.start & PAGE_2M_ADDR_MASK;
         for(uint64_t chunk=0; chunk < n_chunks; chunk ++){
             uint64_t addr = base + PAGE_SIZE_2M*chunk;
-            mmu_map_2m(HHFM_BASE+addr,addr);
+            mmu_map_2m(HHDM_BASE+addr,addr);
         }
     }
-
+    uint64_t highest_page = get_highest_page();
+    uint64_t bitmap_size = int_div_round_up(highest_page, 8);
+    uint64_t MMU_bitmap = int_div_round_up(bitmap_size, PAGE_SIZE_2M) + 1;
+    uint64_t base = bitmap_phys & PAGE_2M_ADDR_MASK;
+    for(uint64_t chunk=0; chunk < MMU_bitmap; chunk ++){
+        uint64_t addr = base + PAGE_SIZE_2M*chunk;
+        mmu_map_2m(HHDM_BASE+addr,addr);
+    }
+   /*
+   uint64_t highest_page = get_highest_page();
+   uint64_t n_chunks = int_div_round_up(highest_page * PAGE_SIZE, PAGE_SIZE_2M);
+   for(uint64_t chunk=0; chunk < n_chunks; chunk ++){
+        uint64_t addr = PAGE_SIZE_2M*chunk;
+        mmu_map_2m(HHDM_BASE+addr,addr);
+    }*/
 }
