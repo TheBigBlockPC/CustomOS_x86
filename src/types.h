@@ -30,6 +30,9 @@ typedef unsigned long long  uintptr_t;
 #endif
 #endif
 
+#define true 1
+#define false 0
+
 typedef uint64_t size_t;
 
 typedef struct {

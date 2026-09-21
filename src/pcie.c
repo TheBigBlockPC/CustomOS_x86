@@ -28,6 +28,22 @@ struct acpi_mcfg_entry {
     uint32_t reserved;
 } __attribute__((packed));
 
+typedef struct {
+    uint16_t vendor_id;
+    uint16_t device_id;
+    uint16_t command;
+    uint16_t status;
+    uint8_t  revision_id;
+    uint8_t  class_prog_if;
+    uint8_t  subclass;
+    uint8_t  class_code;
+    uint8_t  cache_line_size;
+    uint8_t  latency_timer;
+    uint8_t  header_type;
+    uint8_t  bist;
+    uint32_t bars[6]; // Offset 0x10: BAR0 through BAR5
+} __attribute__((packed)) pcie_device_config_t;
+
 static uint64_t pci_cfg_phys(
     const struct acpi_mcfg_entry *entry,
     uint8_t bus,
@@ -111,59 +127,75 @@ uint32_t pci_read32(
     return *ptr;
 }
 
+bool get_pcie_bar64_address(volatile pcie_device_config_t* config, uint8_t bar_index, uint64_t* out_address) {
+    // 1. Sanity check: Ensure the index is within range
+    if (bar_index > 5) return false;
+
+    uint32_t bar_low = config->bars[bar_index];
+
+    // 2. Check Bit 0: Must be 0 for Memory Space
+    if ((bar_low & 0x1) != 0) {
+        // This is an I/O space BAR, not supported by this 64-bit memory function
+        return false; 
+    }
+
+    // 3. Check Bits 1-2: Memory Type
+    uint8_t mem_type = (bar_low >> 1) & 0x3;
+
+    if (mem_type == 0x2) {
+        // 64-bit Memory Space: Requires this BAR and the next one
+        if (bar_index >= 5) {
+            // A 64-bit BAR cannot start at the final index (BAR5) because it needs BAR6 (which doesn't exist)
+            return false; 
+        }
+
+        uint32_t bar_high = config->bars[bar_index + 1];
+
+        // 4. Combine low and high, masking out the lower 4 flag bits of the low BAR
+        uint64_t address_low  = (uint64_t)(bar_low & 0xFFFFFFF0);
+        uint64_t address_high = ((uint64_t)bar_high) << 32;
+
+        *out_address = address_high | address_low;
+        return true;
+
+    } else if (mem_type == 0x0) {
+        // 32-bit Memory Space: Only occupies this single BAR slot
+        *out_address = (uint64_t)(bar_low & 0xFFFFFFF0);
+        return true;
+    }
+
+    // mem_type 0x1 is reserved by the PCI specification
+    return false;
+}
+
 static void pci_scan_bus(
     const struct acpi_mcfg_entry *entry,
     uint8_t bus)
 {
     for (uint8_t device = 0; device < 32; device++) {
-
-        uint16_t vendor =
-            pci_read16(
-                entry,
-                bus,
-                device,
-                0,
-                PCI_VENDOR_ID
-            );
+        pcie_device_config_t *dev_config = pci_cfg_ptr(
+            entry,
+            bus,
+            device,
+            0,
+            0
+        );
+        uint16_t vendor = dev_config->vendor_id;
 
         if (vendor == 0xFFFF)
             continue;
 
-        uint16_t device_id =
-            pci_read16(
-                entry,
-                bus,
-                device,
-                0,
-                PCI_DEVICE_ID
-            );
+        uint16_t device_id = dev_config->device_id;
+        uint8_t class_code =dev_config->class_code;
+        uint8_t subclass = dev_config->subclass;
+        uint8_t prog_if = dev_config->class_prog_if;
 
-        uint8_t class_code =
-            pci_read8(
-                entry,
-                bus,
-                device,
-                0,
-                PCI_CLASS_CODE
-            );
+        uint64_t bar_0_phys = 0;
+        bool valid = get_pcie_bar64_address(dev_config,0,&bar_0_phys);
 
-        uint8_t subclass =
-            pci_read8(
-                entry,
-                bus,
-                device,
-                0,
-                PCI_SUBCLASS
-            );
-
-        uint8_t prog_if =
-            pci_read8(
-                entry,
-                bus,
-                device,
-                0,
-                PCI_PROG_IF
-            );
+        if(bar_0_phys == 0){
+            continue;
+        }
 
         con_write("PCI ", 0x07);
 
@@ -182,16 +214,25 @@ static void pci_scan_bus(
         con_write(" device=", 0x07);
         print_uint64(device_id);
 
-        con_write(" class=", 0x07);
+        //con_write(" class=", 0x07);
+        con_write(" ", 0x07);
         print_uint64(class_code);
 
-        con_write(" subclass=", 0x07);
+        //con_write(" subclass=", 0x07);
+        con_write(":", 0x07); 
         print_uint64(subclass);
 
-        con_write(" prog_if=", 0x07);
+        //con_write(" prog_if=", 0x07);
+        con_write(":", 0x07);
         print_uint64(prog_if);
-
         con_write("\n", 0x07);
+        if(valid){
+            con_write("Bar_0 @ ", 0x07);
+            print_uint64(bar_0_phys);
+            con_write("\n", 0x07);
+        }else{
+            con_write("INVALLID BAR 0\n", 0x01);
+        }
     }
 }
 
