@@ -12,22 +12,6 @@
 #include "paging.h"
 #define FALSE 0
 
-void print_uint64_dec(uint64_t val){
-    char dec_chars[10] = {'0','1','2','3','4','5','6','7','8','9'};
-    int digits = 0;
-    char buf[32];
-    uint64_t val_temp = val;
-    for(int i =0;i<32;i++){
-        buf[i] = 0;
-    }
-    while(val_temp != 0){
-        uint64_t digit = val_temp % 10;
-        buf[31-digits] = dec_chars[digit];
-        digits++;
-        val_temp /= 10;
-    }
-    con_write((char*)(&buf[32-digits]),0x07);
-}
 // Define the GOP GUID manually if your version of uefi.h doesn't export it globally
 // {9042A9DE-23DC-4a38-96FB-7DEE0FA1B394}
 static efi_guid_t gop_guid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;

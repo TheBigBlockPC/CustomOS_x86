@@ -20,13 +20,13 @@ struct acpi_mcfg {
     uint64_t reserved;              // 0x08 bytes
 } __attribute__((packed));
 
-struct acpi_mcfg_entry {
+typedef struct {
     uint64_t base_address;
     uint16_t segment_group;
     uint8_t  start_bus;
     uint8_t  end_bus;
     uint32_t reserved;
-} __attribute__((packed));
+} __attribute__((packed)) acpi_mcfg_entry_t;
 
 typedef struct {
     uint16_t vendor_id;
@@ -44,8 +44,11 @@ typedef struct {
     uint32_t bars[6]; // Offset 0x10: BAR0 through BAR5
 } __attribute__((packed)) pcie_device_config_t;
 
+static acpi_mcfg_entry_t* main_pcie;
+static uint8_t main_pcie_bus;
+
 static uint64_t pci_cfg_phys(
-    const struct acpi_mcfg_entry *entry,
+    const acpi_mcfg_entry_t *entry,
     uint8_t bus,
     uint8_t device,
     uint8_t function,
@@ -71,7 +74,7 @@ static uint64_t pci_cfg_phys(
 }
 
 static void *pci_cfg_ptr(
-    const struct acpi_mcfg_entry *entry,
+    const acpi_mcfg_entry_t *entry,
     uint8_t bus,
     uint8_t device,
     uint8_t function,
@@ -89,7 +92,7 @@ static void *pci_cfg_ptr(
 }
 
 uint8_t pci_read8(
-    const struct acpi_mcfg_entry *entry,
+    const acpi_mcfg_entry_t *entry,
     uint8_t bus,
     uint8_t device,
     uint8_t function,
@@ -102,7 +105,7 @@ uint8_t pci_read8(
 }
 
 uint16_t pci_read16(
-    const struct acpi_mcfg_entry *entry,
+    const acpi_mcfg_entry_t *entry,
     uint8_t bus,
     uint8_t device,
     uint8_t function,
@@ -115,7 +118,7 @@ uint16_t pci_read16(
 }
 
 uint32_t pci_read32(
-    const struct acpi_mcfg_entry *entry,
+    const acpi_mcfg_entry_t *entry,
     uint8_t bus,
     uint8_t device,
     uint8_t function,
@@ -168,14 +171,12 @@ bool get_pcie_bar64_address(volatile pcie_device_config_t* config, uint8_t bar_i
     return false;
 }
 
-static void pci_scan_bus(
-    const struct acpi_mcfg_entry *entry,
-    uint8_t bus)
+static void pci_scan_bus()
 {
     for (uint8_t device = 0; device < 32; device++) {
         pcie_device_config_t *dev_config = pci_cfg_ptr(
-            entry,
-            bus,
+            main_pcie,
+            main_pcie_bus,
             device,
             0,
             0
@@ -199,10 +200,10 @@ static void pci_scan_bus(
 
         con_write("PCI ", 0x07);
 
-        print_uint64(entry->segment_group);
+        print_uint64(main_pcie->segment_group);
         con_write(":", 0x07);
 
-        print_uint64(bus);
+        print_uint64(main_pcie_bus);
         con_write(":", 0x07);
 
         print_uint64(device);
@@ -236,6 +237,47 @@ static void pci_scan_bus(
     }
 }
 
+uint8_t pcie_get_device_index(uint8_t class, uint8_t subclass, uint8_t prog_if){
+    for (uint8_t device = 0; device < 32; device++) {
+        pcie_device_config_t *dev_config = pci_cfg_ptr(
+            main_pcie,
+            main_pcie_bus,
+            device,
+            0,
+            0
+        );
+        uint16_t vendor = dev_config->vendor_id;
+
+        if (vendor == 0xFFFF)
+            continue;
+        if(
+            dev_config->class_code == class &&
+            dev_config->subclass == subclass &&
+            dev_config->class_prog_if == prog_if
+        ){
+            return device;
+        }
+    }
+    return 0;
+}
+
+uint64_t pcie_get_device_bar(uint8_t device_id,uint8_t bar){
+    pcie_device_config_t *dev_config = pci_cfg_ptr(
+        main_pcie,
+        main_pcie_bus,
+        device_id,
+        0,
+        0
+    );
+    uint64_t bar_phys = 0;
+    bool valid = get_pcie_bar64_address(dev_config,bar,&bar_phys);
+    if(!valid){
+        panic("trying to get invallid bar");
+    }
+    identitymap_2m(bar_phys & ~(PAGE_SIZE_2M - 1));
+    return bar_phys;
+}
+
 void pci_init(void)
 {
     struct acpi_mcfg *mcfg =
@@ -243,10 +285,10 @@ void pci_init(void)
     //identitymap_2m(((uint64_t)mcfg) & PAGE_2M_ADDR_MASK);
     size_t entry_count =
         (mcfg->header.length - sizeof(struct acpi_mcfg))
-        / sizeof(struct acpi_mcfg_entry);
+        / sizeof(acpi_mcfg_entry_t);
 
-    struct acpi_mcfg_entry *entries =
-        (struct acpi_mcfg_entry *)
+    acpi_mcfg_entry_t *entries =
+        (acpi_mcfg_entry_t *)
         ((uint8_t *)mcfg + sizeof(struct acpi_mcfg));
 
     con_write("MCFG entries: ", 0x07);
@@ -272,6 +314,7 @@ void pci_init(void)
     //con_write("PCI 00:00.0 vendor: ", 0x07);
     //print_uint64(vendor);
     //con_write("\n", 0x07);
-
-    pci_scan_bus(&entries[0], entries[0].start_bus);
+    main_pcie = &entries[0];
+    main_pcie_bus = entries[0].start_bus;
+    //pci_scan_bus();
 }

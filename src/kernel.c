@@ -8,6 +8,9 @@
 #include "gdt/gdt.h"
 #include "acpi.h"
 #include "pcie.h"
+#include "util.h"
+#include "drivers/nvme.h"
+
 void on_input(char* input){
     con_write("Echo: ",0x07);
     con_write(input,0x01);
@@ -23,6 +26,9 @@ void k_main(){
     init_acpi();
     pci_init();
     interrupts_init();
+
+    nvme_driver_init();
+
     tty_init();
     tty_set_send_event(&on_input);
     tty_allow_input();
