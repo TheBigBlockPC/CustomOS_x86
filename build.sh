@@ -29,6 +29,8 @@ clang \
   src/interrupts/interrupts.S \
   src/panic.c \
   src/acpi.c \
-  src/pcie.c
+  src/pcie.c \
+  src/drivers/nvme.c \
+  src/filesystem.c
 
 cp bootx64.efi ./test_env/EFI/BOOT/

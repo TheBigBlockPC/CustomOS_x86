@@ -1,3 +1,4 @@
 BIOS
 bootx64.efi
 *.log
+*.img
