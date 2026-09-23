@@ -1,139 +1,417 @@
-#include "../types.h"
+#include "nvme.h"
 #include "../pcie.h"
 #include "../console.h"
 #include "../util.h"
-#include "../memory.h"
 
-// NVMe MMIO Controller Registers (BAR0)
+#define NVME_PAGE_SIZE 4096
+#define NVME_ADMIN_QUEUE_DEPTH 32
+#define NVME_IO_QUEUE_DEPTH 16
+#define NVME_IO_QUEUE_ID 1
+#define NVME_TIMEOUT_ITERATIONS 100000000ULL
+
+#define NVME_ADMIN_CREATE_IO_SQ 0x01
+#define NVME_ADMIN_CREATE_IO_CQ 0x05
+#define NVME_ADMIN_IDENTIFY 0x06
+#define NVME_ADMIN_SET_FEATURES 0x09
+#define NVME_CMD_READ 0x02
+#define NVME_FEATURE_NUM_QUEUES 0x07
+#define NVME_IDENTIFY_NAMESPACE 0x00
+#define NVME_IDENTIFY_ACTIVE_NS_LIST 0x02
+
+#define NVME_CC_EN (1u << 0)
+#define NVME_CC_IOSQES (6u << 16)
+#define NVME_CC_IOCQES (4u << 20)
+#define NVME_CSTS_RDY (1u << 0)
+#define NVME_CSTS_CFS (1u << 1)
+
 typedef struct __attribute__((packed)) {
-    uint64_t cap;       // 0x00: Controller Capabilities
-    uint32_t vs;        // 0x08: Version
-    uint32_t intms;     // 0x0C: Interrupt Mask Set
-    uint32_t intmc;     // 0x10: Interrupt Mask Clear
-    uint32_t cc;        // 0x14: Controller Configuration
-    uint32_t reserved;  // 0x18
-    uint32_t csts;      // 0x1C: Controller Status
-    uint32_t nssr;      // 0x20: NVM Subsystem Reset
-    uint32_t aqa;       // 0x24: Admin Queue Attributes
-    uint64_t asq;       // 0x28: Admin Submission Queue Base Address
-    uint64_t acq;       // 0x30: Admin Completion Queue Base Address
-    uint32_t cmbloc;    // 0x38: Controller Memory Buffer Location
-    uint32_t cmbsz;     // 0x3C: Controller Memory Buffer Size
-    // Doorbells start at offset 0x1000
+    uint64_t cap;
+    uint32_t vs, intms, intmc, cc, reserved, csts, nssr, aqa;
+    uint64_t asq, acq;
+    uint32_t cmbloc, cmbsz;
 } nvme_regs_t;
 
-// 64-Byte Submission Queue Entry (SQE)
 typedef struct __attribute__((packed)) {
-    uint8_t  opcode;
-    uint8_t  flags;
-    uint16_t cid;       // Command Identifier
-    uint32_t nsid;      // Namespace Identifier
-    uint32_t reserved0;
-    uint64_t mptr;      // Metadata Pointer
-    uint64_t prp1;      // Physical Region Page 1 (DMA Target)
-    uint64_t prp2;      // Physical Region Page 2
-    uint32_t cdw10[6];  // Command-specific Dwords (10 to 15)
+    uint8_t opcode, flags;
+    uint16_t cid;
+    uint32_t nsid, cdw2, cdw3;
+    uint64_t mptr, prp1, prp2;
+    uint32_t cdw10, cdw11, cdw12, cdw13, cdw14, cdw15;
 } nvme_sqe_t;
 
-// 16-Byte Completion Queue Entry (CQE)
 typedef struct __attribute__((packed)) {
-    uint32_t cdw0;      // Command-specific result
-    uint32_t reserved;
-    uint16_t sq_head;   // Current Submission Queue Head pointer
-    uint16_t sq_id;     // ID of submission queue
-    uint16_t cid;       // Command ID being completed
-    uint16_t status;    // Status Field (Bit 0 is Phase Tag)
+    uint32_t result, reserved;
+    uint16_t sq_head, sq_id, cid, status;
 } nvme_cqe_t;
 
 typedef struct {
+    volatile nvme_sqe_t* sq;
+    volatile nvme_cqe_t* cq;
+    volatile uint32_t* sq_doorbell;
+    volatile uint32_t* cq_doorbell;
+    uint16_t depth, tail, head;
+    uint8_t phase;
+} nvme_queue_t;
+
+typedef struct {
     volatile nvme_regs_t* regs;
-    uint32_t db_stride;   // Doorbell spacing factor
-    
-    // Admin Queue (Slots capacity, e.g., 64)
-    nvme_sqe_t* admin_sq;
-    nvme_cqe_t* admin_cq;
-    uint16_t admin_sq_tail;
-    uint16_t admin_cq_head;
-    uint16_t admin_cq_phase;
+    uint64_t cap;
+    uint64_t namespace_blocks;
+    uint32_t namespace_id, block_size;
+    uint16_t next_cid;
+    uint8_t initialized;
+    nvme_queue_t admin, io;
 
-    // I/O Queue 1 (For reads/writes)
-    nvme_sqe_t* io_sq;
-    nvme_cqe_t* io_cq;
-    uint16_t io_sq_tail;
-    uint16_t io_cq_head;
-    uint16_t io_cq_phase;
-} nvme_ctrl_t;
+    /* DMA addresses equal virtual addresses while the kernel is identity mapped. */
+    uint8_t admin_sq_page[NVME_PAGE_SIZE] __attribute__((aligned(NVME_PAGE_SIZE)));
+    uint8_t admin_cq_page[NVME_PAGE_SIZE] __attribute__((aligned(NVME_PAGE_SIZE)));
+    uint8_t io_sq_page[NVME_PAGE_SIZE] __attribute__((aligned(NVME_PAGE_SIZE)));
+    uint8_t io_cq_page[NVME_PAGE_SIZE] __attribute__((aligned(NVME_PAGE_SIZE)));
+    uint8_t identify_page[NVME_PAGE_SIZE] __attribute__((aligned(NVME_PAGE_SIZE)));
+    uint8_t read_page[NVME_PAGE_SIZE] __attribute__((aligned(NVME_PAGE_SIZE)));
+} nvme_controller_t;
 
-// Helper function to ring doorbells
-void nvme_ring_db(nvme_ctrl_t* ctrl, uint32_t qid, int is_cq, uint16_t val) {
-    // Formula: 0x1000 + ((QID * 2) + (Is_CQ ? 1 : 0)) * DB_STRIDE
-    uintptr_t offset = 0x1000 + ((qid * 2) + (is_cq ? 1 : 0)) * ctrl->db_stride;
-    volatile uint32_t* db = (volatile uint32_t*)((uintptr_t)ctrl->regs + offset);
-    *db = val;
+static nvme_controller_t controller __attribute__((aligned(NVME_PAGE_SIZE)));
+
+static void nvme_barrier(void)
+{
+    __sync_synchronize();
 }
 
-int nvme_init(nvme_ctrl_t* ctrl, nvme_regs_t* bar0_vaddr) {
-    ctrl->regs = bar0_vaddr;
+static uint64_t nvme_phys(const void* ptr)
+{
+    return (uint64_t)ptr;
+}
 
-    // 1. Read Capabilities to determine Doorbell Stride
-    ctrl->db_stride = 1 << ((ctrl->regs->cap >> 32) & 0xF);
-
-    // 2. Disable controller to perform configuration reset
-    if (ctrl->regs->cc & 1) {
-        ctrl->regs->cc &= ~1;
+static int nvme_wait_ready(nvme_controller_t* c, uint8_t wanted)
+{
+    for (uint64_t i = 0; i < NVME_TIMEOUT_ITERATIONS; i++) {
+        uint32_t status = c->regs->csts;
+        if (status & NVME_CSTS_CFS) {
+            con_write("NVMe: controller fatal status\n", 0x04);
+            return 0;
+        }
+        if (!!(status & NVME_CSTS_RDY) == wanted) return 1;
+        __asm__ volatile("pause");
     }
-    while (ctrl->regs->csts & 1); // Wait for CSTS.RDY == 0
-
-    // 3. Setup Admin Queue (Allocate 1 page per queue, space for 64 entries)
-    ctrl->admin_sq = (nvme_sqe_t*)mem_alloc_page(); // Replace with your allocator
-    ctrl->admin_cq = (nvme_cqe_t*)mem_alloc_page();
-    ctrl->admin_sq_tail = 0;
-    ctrl->admin_cq_head = 0;
-    ctrl->admin_cq_phase = 1; // Phase tag starts at 1
-
-    // Write size (Slots - 1). Standardizing on 63 for 64 slots.
-    ctrl->regs->aqa = (63 << 16) | 63; 
-    ctrl->regs->asq = (uint64_t)ctrl->admin_sq;
-    ctrl->regs->acq = (uint64_t)ctrl->admin_cq;
-
-    // 4. Configure Controller (4KB Page, NVMe Command set, Standard Entry sizes)
-    // 0x00460000 -> CSS=0 (NVM), MPS=0 (4KB), IOCQES=4 (16B), IOSQES=6 (64B)
-    ctrl->regs->cc = (0 << 20) | (0 << 7) | (4 << 20) | (6 << 16); 
-    ctrl->regs->cc |= 1; // Enable
-
-    while (!(ctrl->regs->csts & 1)); // Wait for CSTS.RDY == 1
-
-    // 5. Create I/O Completion Queue via Admin Command
-    // (Omitted detailed admin wrappers for brevity; involves sending 
-    // Create I/O CQ [opcode 0x05] and Create I/O SQ [opcode 0x01])
-    
-    return 0; // Success
+    con_write("NVMe: RDY timeout\n", 0x04);
+    return 0;
 }
 
-void nvme_driver_init(){
-    uint8_t id = pcie_get_device_index(1,8,2);
-    con_write("NVME with ID at: ",0x03);
+static int nvme_wait_completion(nvme_controller_t* c, nvme_queue_t* q,
+                                uint16_t expected_cid, uint32_t* result)
+{
+    for (uint64_t i = 0; i < NVME_TIMEOUT_ITERATIONS; i++) {
+        volatile nvme_cqe_t* entry = &q->cq[q->head];
+        uint16_t status = entry->status;
+        if ((status & 1u) == q->phase) {
+            nvme_barrier();
+            uint16_t cid = entry->cid;
+            if (result) *result = entry->result;
+
+            q->head++;
+            if (q->head == q->depth) {
+                q->head = 0;
+                q->phase ^= 1;
+            }
+            nvme_barrier();
+            *q->cq_doorbell = q->head;
+            nvme_barrier();
+
+            if (cid != expected_cid) {
+                con_write("NVMe: unexpected command ID\n", 0x04);
+                return 0;
+            }
+            /* Bit 0 is phase; all other completion status bits must be clear. */
+            if (status & ~1u) {
+                con_write("NVMe command failed. SCT=", 0x04);
+                print_uint64_dec((status >> 9) & 7u);
+                con_write(" SC=", 0x04);
+                print_uint64_dec((status >> 1) & 0xffu);
+                con_write("\n", 0x04);
+                return 0;
+            }
+            return 1;
+        }
+        if (c->regs->csts & NVME_CSTS_CFS) {
+            con_write("NVMe: fatal status while waiting for command\n", 0x04);
+            return 0;
+        }
+        __asm__ volatile("pause");
+    }
+    con_write("NVMe: command completion timeout\n", 0x04);
+    return 0;
+}
+
+/* Commands are synchronous; one submission is outstanding at a time. */
+static int nvme_submit(nvme_controller_t* c, nvme_queue_t* q,
+                       nvme_sqe_t* command, uint32_t* result)
+{
+    uint16_t cid = c->next_cid++;
+    command->cid = cid;
+    memory_copy((void*)&q->sq[q->tail], command, sizeof(*command));
+    nvme_barrier();
+
+    q->tail++;
+    if (q->tail == q->depth) q->tail = 0;
+    *q->sq_doorbell = q->tail;
+    nvme_barrier();
+    return nvme_wait_completion(c, q, cid, result);
+}
+
+static int nvme_set_num_queues(nvme_controller_t* c)
+{
+    nvme_sqe_t command;
+    memory_zero(&command, sizeof(command));
+    uint32_t result;
+    command.opcode = NVME_ADMIN_SET_FEATURES;
+    command.cdw10 = NVME_FEATURE_NUM_QUEUES;
+    /* Zero based SQ/CQ counts: request one of each. */
+    if (!nvme_submit(c, &c->admin, &command, &result)) return 0;
+
+    uint32_t sq_count = (result & 0xffffu) + 1u;
+    uint32_t cq_count = (result >> 16) + 1u;
+    con_write("NVMe allocated IO SQs: ", 0x07);
+    print_uint64_dec(sq_count);
+    con_write(" CQs: ", 0x07);
+    print_uint64_dec(cq_count);
+    con_write("\n", 0x07);
+    return 1;
+}
+
+static int nvme_identify(nvme_controller_t* c, uint32_t nsid, uint32_t kind)
+{
+    nvme_sqe_t command;
+    memory_zero(&command, sizeof(command));
+    memory_zero(c->identify_page, NVME_PAGE_SIZE);
+    command.opcode = NVME_ADMIN_IDENTIFY;
+    command.nsid = nsid;
+    command.prp1 = nvme_phys(c->identify_page);
+    command.cdw10 = kind;
+    return nvme_submit(c, &c->admin, &command, 0);
+}
+
+static int nvme_find_namespace(nvme_controller_t* c)
+{
+    if (!nvme_identify(c, 0, NVME_IDENTIFY_ACTIVE_NS_LIST)) {
+        con_write("NVMe: failed getting namespace list\n", 0x04);
+        return 0;
+    }
+    c->namespace_id = *(uint32_t*)c->identify_page;
+    if (!c->namespace_id) {
+        con_write("NVMe: no active namespaces\n", 0x04);
+        return 0;
+    }
+    con_write("NVMe namespace: ", 0x07);
+    print_uint64_dec(c->namespace_id);
+    con_write("\n", 0x07);
+    return 1;
+}
+
+static int nvme_identify_namespace(nvme_controller_t* c)
+{
+    if (!nvme_identify(c, c->namespace_id, NVME_IDENTIFY_NAMESPACE)) {
+        con_write("NVMe: Identify Namespace failed\n", 0x04);
+        return 0;
+    }
+
+    /* NSZE starts at byte 0. FLBAS byte 26 selects an LBAF at byte 128. */
+    c->namespace_blocks = *(uint64_t*)c->identify_page;
+    uint8_t format = c->identify_page[26] & 0x0fu;
+    uint32_t lbaf = *(uint32_t*)&c->identify_page[128 + 4u * format];
+    uint8_t lbads = (lbaf >> 16) & 0xffu;
+    if (lbaf & 0xffffu) {
+        con_write("NVMe: namespaces with metadata are unsupported\n", 0x04);
+        return 0;
+    }
+    if (lbads >= 32) {
+        con_write("NVMe: invalid LBADS\n", 0x04);
+        return 0;
+    }
+    c->block_size = 1u << lbads;
+    if (c->block_size > NVME_PAGE_SIZE || NVME_PAGE_SIZE % c->block_size) {
+        con_write("NVMe: block size incompatible with 4096-byte reads\n", 0x04);
+        return 0;
+    }
+    con_write("NVMe block size: ", 0x07);
+    print_uint64_dec(c->block_size);
+    con_write("\nNVMe namespace blocks: ", 0x07);
+    print_uint64_dec(c->namespace_blocks);
+    con_write("\n", 0x07);
+    return 1;
+}
+
+static int nvme_create_io_cq(nvme_controller_t* c)
+{
+    nvme_sqe_t command;
+    memory_zero(&command, sizeof(command));
+    command.opcode = NVME_ADMIN_CREATE_IO_CQ;
+    command.prp1 = nvme_phys(c->io_cq_page);
+    command.cdw10 = ((uint32_t)(c->io.depth - 1) << 16) | NVME_IO_QUEUE_ID;
+    command.cdw11 = 1u; /* Physically contiguous; poll completions. */
+    if (!nvme_submit(c, &c->admin, &command, 0)) {
+        con_write("NVMe: Create IO CQ failed\n", 0x04);
+        return 0;
+    }
+    return 1;
+}
+
+static int nvme_create_io_sq(nvme_controller_t* c)
+{
+    nvme_sqe_t command;
+    memory_zero(&command, sizeof(command));
+    command.opcode = NVME_ADMIN_CREATE_IO_SQ;
+    command.prp1 = nvme_phys(c->io_sq_page);
+    command.cdw10 = ((uint32_t)(c->io.depth - 1) << 16) | NVME_IO_QUEUE_ID;
+    command.cdw11 = ((uint32_t)NVME_IO_QUEUE_ID << 16) | 1u;
+    if (!nvme_submit(c, &c->admin, &command, 0)) {
+        con_write("NVMe: Create IO SQ failed\n", 0x04);
+        return 0;
+    }
+    return 1;
+}
+
+static void nvme_setup_queue(nvme_queue_t* q, uint8_t* sq_page, uint8_t* cq_page,
+                             uint16_t depth, uint64_t doorbell_base, uint32_t stride,
+                             uint32_t queue_id)
+{
+    q->sq = (volatile nvme_sqe_t*)sq_page;
+    q->cq = (volatile nvme_cqe_t*)cq_page;
+    q->depth = depth;
+    q->phase = 1;
+    q->sq_doorbell = (volatile uint32_t*)(doorbell_base + 2u * queue_id * stride);
+    q->cq_doorbell = (volatile uint32_t*)(doorbell_base + (2u * queue_id + 1u) * stride);
+}
+
+static int nvme_init(nvme_controller_t* c, uint64_t bar)
+{
+    memory_zero(c, sizeof(*c));
+    c->regs = (volatile nvme_regs_t*)bar;
+    c->cap = c->regs->cap;
+
+    uint32_t version = c->regs->vs;
+    con_write("NVMe version: ", 0x07);
+    print_uint64_dec(version >> 16);
+    con_write(".", 0x07);
+    print_uint64_dec((version >> 8) & 0xffu);
+    con_write(".", 0x07);
+    print_uint64_dec(version & 0xffu);
+    con_write("\n", 0x07);
+
+    if ((c->cap >> 48) & 0xfu) {
+        con_write("NVMe: 4K pages unsupported\n", 0x04);
+        return 0;
+    }
+    uint32_t max_entries = (uint32_t)(c->cap & 0xffffu) + 1u;
+    if (max_entries < 2) {
+        con_write("NVMe: queue limit too small\n", 0x04);
+        return 0;
+    }
+    uint16_t admin_depth = max_entries < NVME_ADMIN_QUEUE_DEPTH
+                         ? max_entries : NVME_ADMIN_QUEUE_DEPTH;
+    uint16_t io_depth = max_entries < NVME_IO_QUEUE_DEPTH
+                      ? max_entries : NVME_IO_QUEUE_DEPTH;
+
+    c->regs->cc &= ~NVME_CC_EN;
+    nvme_barrier();
+    if (!nvme_wait_ready(c, 0)) return 0;
+
+    uint64_t admin_sq_phys = nvme_phys(c->admin_sq_page);
+    uint64_t admin_cq_phys = nvme_phys(c->admin_cq_page);
+    if ((admin_sq_phys | admin_cq_phys | nvme_phys(c->io_sq_page) |
+         nvme_phys(c->io_cq_page) | nvme_phys(c->identify_page) |
+         nvme_phys(c->read_page)) & (NVME_PAGE_SIZE - 1)) {
+        con_write("NVMe: DMA page not aligned\n", 0x04);
+        return 0;
+    }
+
+    uint32_t admin_size = admin_depth - 1;
+    c->regs->aqa = (admin_size << 16) | admin_size;
+    c->regs->asq = admin_sq_phys;
+    c->regs->acq = admin_cq_phys;
+    uint32_t cc = NVME_CC_IOSQES | NVME_CC_IOCQES;
+    c->regs->cc = cc; /* 4K pages and NVM command set use zero-valued fields. */
+    nvme_barrier();
+
+    uint32_t stride = 4u << ((c->cap >> 32) & 0xfu);
+    nvme_setup_queue(&c->admin, c->admin_sq_page, c->admin_cq_page,
+                     admin_depth, bar + 0x1000, stride, 0);
+    nvme_setup_queue(&c->io, c->io_sq_page, c->io_cq_page,
+                     io_depth, bar + 0x1000, stride, NVME_IO_QUEUE_ID);
+    c->next_cid = 1;
+
+    c->regs->cc = cc | NVME_CC_EN;
+    nvme_barrier();
+    if (!nvme_wait_ready(c, 1)) return 0;
+    con_write("NVMe controller ready\n", 0x02);
+
+    if (!nvme_set_num_queues(c) || !nvme_find_namespace(c) ||
+        !nvme_identify_namespace(c)) return 0;
+    /* The completion queue must exist before its submission queue. */
+    if (!nvme_create_io_cq(c) || !nvme_create_io_sq(c)) return 0;
+
+    c->initialized = 1;
+    con_write("NVMe initialization complete\n", 0x02);
+    return 1;
+}
+
+uint8_t* nvme_read_block(uint8_t nvme_index, uint64_t lba)
+{
+    if (nvme_index != 0 || !controller.initialized) return 0;
+    nvme_controller_t* c = &controller;
+    uint32_t block_count = NVME_PAGE_SIZE / c->block_size;
+    if (lba >= c->namespace_blocks ||
+        block_count > c->namespace_blocks - lba) {
+        con_write("NVMe: LBA out of range for 4096-byte read\n", 0x04);
+        return 0;
+    }
+
+    nvme_sqe_t command;
+    memory_zero(&command, sizeof(command));
+    command.opcode = NVME_CMD_READ;
+    command.nsid = c->namespace_id;
+    /* The aligned buffer and exact 4K transfer fit in PRP1. */
+    command.prp1 = nvme_phys(c->read_page);
+    command.cdw10 = (uint32_t)lba;
+    command.cdw11 = (uint32_t)(lba >> 32);
+    command.cdw12 = block_count - 1; /* NLB is zero based. */
+    if (!nvme_submit(c, &c->io, &command, 0)) {
+        con_write("NVMe: READ failed\n", 0x04);
+        return 0;
+    }
+    return c->read_page;
+}
+
+void nvme_driver_init(void)
+{
+    uint8_t id = pcie_get_device_index(1, 8, 2);
+    con_write("NVMe PCI ID: ", 0x03);
     print_uint64(id);
-    con_write("\nNVME BAR: ",0x03);
-    uint64_t bar = pcie_get_device_bar(id,0);
+    uint64_t bar = pcie_get_device_bar(id, 0);
+    con_write("\nNVMe BAR: ", 0x03);
     print_uint64(bar);
+    con_write("\n", 0x07);
 
-    nvme_regs_t* nvme_ptr = (nvme_regs_t*)bar;
-    uint32_t ver = nvme_ptr->vs;
-    uint8_t tenery = ver & 0xFF;
-    uint8_t minor = (ver>>8) & 0xFF;
-    uint8_t major = (ver>>16) & 0xFF;
-    con_write("\nversion: ",0x03);
-    print_uint64_dec(major);
-    con_write(".",0x07);
-    print_uint64_dec(minor);
-    con_write(".",0x07);
-    print_uint64_dec(tenery);
-    con_write("\n",0x03);
+    /* PCI memory space and bus mastering must already be enabled for DMA. */
+    if (!nvme_init(&controller, bar)) {
+        con_write("NVMe initialization FAILED\n", 0x04);
+        return;
+    }
 
-    
-    con_write("initializing NVME\n",0x07);
-    nvme_ctrl_t nvme;
-    nvme_init(&nvme,nvme_ptr);
-    con_write("NVME initialized\n",0x07);
+    con_write("Reading NVMe block 0...\n", 0x07);
+    uint8_t* page = nvme_read_block(0, 0);
+    if (!page) {
+        con_write("NVMe test read FAILED\n", 0x04);
+        return;
+    }
+    con_write("NVMe test read SUCCESS\nFirst 32 bytes:\n", 0x02);
+    for (uint32_t i = 0; i < 32; i++) {
+        print_uint64(page[i]);
+        con_write(" ", 0x07);
+    }
+    con_write("\n", 0x07);
+    if (page[510] == 0x55 && page[511] == 0xaa)
+        con_write("MBR signature success\n", 0x02);
+    else
+        con_write("MBR signature failed\n", 0x01);
 }

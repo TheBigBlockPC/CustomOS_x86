@@ -2,6 +2,23 @@
 #include "util.h"
 #include "console.h"
 
+void memory_zero(void* ptr, uint64_t size)
+{
+    volatile uint8_t* bytes = (volatile uint8_t*)ptr;
+    for (uint64_t i = 0; i < size; i++) {
+        bytes[i] = 0;
+    }
+}
+
+void memory_copy(void* dst, const void* src, uint64_t size)
+{
+    volatile uint8_t* out = (volatile uint8_t*)dst;
+    volatile const uint8_t* in = (volatile const uint8_t*)src;
+    for (uint64_t i = 0; i < size; i++) {
+        out[i] = in[i];
+    }
+}
+
 uint64_t int_div_round_up(uint64_t a, uint64_t b){
     return a / b + (a % b != 0);
 }
