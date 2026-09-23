@@ -10,6 +10,7 @@
 #include "pcie.h"
 #include "util.h"
 #include "drivers/nvme.h"
+#include "filesystem.h"
 
 void on_input(char* input){
     con_write("Echo: ",0x07);
@@ -28,6 +29,7 @@ void k_main(){
     interrupts_init();
 
     nvme_driver_init();
+    fs_init();
 
     tty_init();
     tty_set_send_event(&on_input);
