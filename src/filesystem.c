@@ -18,6 +18,74 @@ static uint32_t read_le32(const uint8_t *p)
            ((uint32_t)p[3] << 24);
 }
 
+typedef struct __attribute__((packed)) {
+    char name[8];
+    uint8_t ext[3];
+    uint8_t attr;
+    uint8_t nt;
+
+    uint8_t creation_time_tenth;
+    uint16_t creation_time;
+    uint16_t creation_date;
+    uint16_t access_date;
+
+    uint16_t first_cluster_high;
+    
+    uint16_t write_time;
+    uint16_t write_date;
+
+    uint16_t first_cluster_low;
+    uint32_t size;
+    /* data */
+} FAT_entry_t;
+
+
+void parse_entry(uint8_t* page, int index){
+    FAT_entry_t* entry = (FAT_entry_t*)(page + index*32);
+    char seq[] = {
+        entry->name[0], entry->name[1], entry->name[2], entry->name[3],
+        entry->name[4], entry->name[5], entry->name[6], entry->name[7],
+        0
+    };
+    con_write((char*)seq,0x07);
+    con_write(" ",0x07);
+    if(entry->attr & 0x10){
+        con_write("d",0x07);
+    }else if(entry->attr & 0x08){
+        con_write("v",0x07);
+    }else{
+        con_write("f",0x07);
+    }
+    uint32_t destination_clustor = (entry->first_cluster_high << 16) | entry->first_cluster_low;
+    
+    con_write(" ",0x07);
+    print_uint64(destination_clustor);
+    con_write(" ",0x07);
+    print_uint64(entry->size);
+    con_write("\n",0x07);
+}
+
+typedef struct {
+    uint64_t first_data_sector;
+    uint64_t sectors_per_cluster;
+    uint32_t partition_start_lba;
+} partition_dmetadata_t;
+
+uint64_t get_cluster_LBA(
+    partition_dmetadata_t* meta,
+    uint64_t cluster
+){
+    uint64_t root_sector =
+        meta->first_data_sector +
+        (((uint64_t)cluster - 2ULL) *
+        (uint64_t)(meta->sectors_per_cluster));
+
+    uint64_t root_lba =
+        (uint64_t)(meta->partition_start_lba) +
+        root_sector;
+    return root_lba;
+}
+
 void fs_init(){
     con_write("initializing filesystem\n",0x07);
     uint8_t* page = nvme_read_block(0, 0);
@@ -82,7 +150,7 @@ void fs_init(){
         fat_size == 0 ||
         root_cluster < 2)
     {
-        con_write("Invalid FAT32 BPB\n", 0x04);
+        panic("Invalid FAT32 BPB\n", 0x04);
         return;
     }
 
@@ -93,7 +161,7 @@ void fs_init(){
         (uint64_t)reserved_sectors +
         ((uint64_t)number_of_fats *
         (uint64_t)fat_size);
-
+    /*
     uint64_t root_sector =
         first_data_sector +
         (((uint64_t)root_cluster - 2ULL) *
@@ -102,13 +170,19 @@ void fs_init(){
     uint64_t root_lba =
         (uint64_t)partition_start_lba +
         root_sector;
+    */
+    partition_dmetadata_t metadata;
+    metadata.first_data_sector = first_data_sector;
+    metadata.partition_start_lba = partition_start_lba;
+    metadata.sectors_per_cluster = sectors_per_cluster;
 
+    uint64_t root_lba = get_cluster_LBA(&metadata,root_cluster);
 
     con_write("First data sector: ", 0x07);
     print_uint64_dec(first_data_sector);
 
-    con_write("\nRoot sector: ", 0x07);
-    print_uint64_dec(root_sector);
+    //con_write("\nRoot sector: ", 0x07);
+    //print_uint64_dec(root_sector);
 
     con_write("\nRoot LBA: ", 0x07);
     print_uint64_dec(root_lba);
@@ -116,6 +190,7 @@ void fs_init(){
     con_write("\n", 0x07);
 
     page = nvme_read_block(0, root_lba);
-    con_write(page,0x03);
-    con_write("\n", 0x07);
+    parse_entry(page,0);
+    parse_entry(page,1);
+    parse_entry(page,2);
 }
