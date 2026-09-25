@@ -10,12 +10,33 @@ void memory_zero(void* ptr, uint64_t size)
     }
 }
 
+void memory_set(void* ptr, uint64_t size, uint8_t val)
+{
+    volatile uint8_t* bytes = (volatile uint8_t*)ptr;
+    for (uint64_t i = 0; i < size; i++) {
+        bytes[i] = val;
+    }
+}
+
 void memory_copy(void* dst, const void* src, uint64_t size)
 {
     volatile uint8_t* out = (volatile uint8_t*)dst;
     volatile const uint8_t* in = (volatile const uint8_t*)src;
     for (uint64_t i = 0; i < size; i++) {
         out[i] = in[i];
+    }
+}
+
+void str_copy(char* dest, char* src, bool add_null){
+    int i=0;
+    while(true){
+        char value = src[i];
+        if(value == 0) break;
+        dest[i] = value;
+        i++;
+    }
+    if(add_null){
+        dest[i+1] = 0;
     }
 }
 
