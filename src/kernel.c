@@ -9,7 +9,7 @@
 #include "acpi.h"
 #include "pcie.h"
 #include "util.h"
-#include "drivers/nvme.h"
+#include "drivers/sata.h"
 #include "filesystem.h"
 
 void on_input(char* input){
@@ -28,7 +28,7 @@ void k_main(){
     pci_init();
     interrupts_init();
 
-    nvme_driver_init();
+    block_storage_init();
     fs_init();
 
     tty_init();

@@ -31,6 +31,7 @@ clang \
   src/acpi.c \
   src/pcie.c \
   src/drivers/nvme.c \
+  src/drivers/sata.c \
   src/filesystem.c
 
 cp bootx64.efi ./test_env/EFI/BOOT/

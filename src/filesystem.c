@@ -1,7 +1,7 @@
 #include "types.h"
 #include "console.h"
 #include "util.h"
-#include "drivers/nvme.h"
+#include "drivers/sata.h"
 #include "filesystem.h"
 
 static uint16_t read_le16(const uint8_t *p)
@@ -125,7 +125,7 @@ void list_files(
         return;
     }
     uint64_t lba = get_cluster_LBA(meta,cluster);
-    uint8_t* page = nvme_read_block(0, lba);
+    uint8_t* page = block_storage_read_block(0, lba);
     int i = 0;
     while(true){
         FS_fd_t fd = parse_entry(page,i);
@@ -143,7 +143,7 @@ uint64_t change_directory(
     char* name
 ){
     uint64_t lba = get_cluster_LBA(meta,cluster);
-    uint8_t* page = nvme_read_block(0, lba);
+    uint8_t* page = block_storage_read_block(0, lba);
     int entry_index = 0;
     char prepared_name[8];
     memory_set(&prepared_name[0],8,' ');
@@ -171,7 +171,7 @@ void read_file(
     uint64_t cluster
 ){
     uint64_t lba = meta->partition_start_lba + meta->fat_start;
-    uint8_t* page = nvme_read_block(0, lba);
+    uint8_t* page = block_storage_read_block(0, lba);
 
     uint64_t target = cluster;
     while(true){
@@ -187,7 +187,7 @@ void read_file(
 
 void fs_init(){
     con_write("initializing filesystem\n",0x07);
-    uint8_t* page = nvme_read_block(0, 0);
+    uint8_t* page = block_storage_read_block(0, 0);
     if (!page) {
         //con_write("NVMe test read FAILED\n", 0x04);
         return;
@@ -197,7 +197,7 @@ void fs_init(){
     con_write("FAT Partition @ ",0x07);
     print_uint64_dec(partition_start_lba);
     con_write("\n",0x07);
-    page = nvme_read_block(0, partition_start_lba);
+    page = block_storage_read_block(0, partition_start_lba);
 
     if (!page) {
         con_write("Failed to read FAT partition\n", 0x04);
@@ -301,5 +301,5 @@ void fs_init(){
     con_write("\n", 0x07);
     list_files(&metadata,prev_cluster);
     uint64_t file_cluster = change_directory(&metadata,root_cluster,"TEST");
-    read_file(&metadata,file_cluster);
+    //read_file(&metadata,file_cluster);
 }

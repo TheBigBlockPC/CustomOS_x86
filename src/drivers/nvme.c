@@ -384,10 +384,15 @@ uint8_t* nvme_read_block(uint8_t nvme_index, uint64_t lba)
 
 void nvme_driver_init(void)
 {
-    uint8_t id = pcie_get_device_index(1, 8, 2);
+    uint32_t id = pcie_find_device(1, 8, 2, PCIE_NO_DEVICE);
+    if (id == PCIE_NO_DEVICE) return;
     con_write("NVMe PCI ID: ", 0x03);
     print_uint64(id);
     uint64_t bar = pcie_get_device_bar(id, 0);
+    if (!bar) {
+        con_write("NVMe BAR unavailable\n", 0x04);
+        return;
+    }
     con_write("\nNVMe BAR: ", 0x03);
     print_uint64(bar);
     con_write("\n", 0x07);

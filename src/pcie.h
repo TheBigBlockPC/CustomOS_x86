@@ -1,7 +1,14 @@
 #ifndef PCIE_H
 #define PCIE_H
 
+#include "types.h"
+
+#define PCIE_NO_DEVICE 0xffffffffu
+
 void pci_init(void);
-uint8_t pcie_get_device_index(uint8_t class, uint8_t subclass, uint8_t prog_if);
-uint64_t pcie_get_device_bar(uint8_t device_idd,uint8_t bar);
+/* Pass PCIE_NO_DEVICE for the first match, then the prior ID for the next. */
+uint32_t pcie_find_device(uint8_t class_code, uint8_t subclass,
+                          uint8_t prog_if, uint32_t after);
+uint64_t pcie_get_device_bar(uint32_t id, uint8_t bar);
+
 #endif
