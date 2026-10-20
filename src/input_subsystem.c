@@ -123,7 +123,7 @@ void set_kb_handler(kb_event handler){
 
 void poll_events(){
     uint8_t scan_code = get_key();
-    if(scan_code == 0) return;
+    if(scan_code == 0 || !key_handler) return;
 
     uint8_t normalized_scan = scan_code & 0b01111111;
     int is_down = !(scan_code & 0b10000000);
@@ -133,9 +133,9 @@ void poll_events(){
         key_state[normalized_scan] = 0;
     }
 
-    if(key_state[0x2A] == 1){
-        key_handler(scan_code,scan_to_ascii_shift[scan_code],is_down);
+    if(key_state[0x2A] == 1 || key_state[0x36] == 1){
+        key_handler(scan_code,scan_to_ascii_shift[normalized_scan],is_down);
     }else{
-        key_handler(scan_code,scan_to_ascii[scan_code],is_down);
+        key_handler(scan_code,scan_to_ascii[normalized_scan],is_down);
     }
 }

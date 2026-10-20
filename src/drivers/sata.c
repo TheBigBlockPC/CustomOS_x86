@@ -3,6 +3,7 @@
 #include "../pcie.h"
 #include "../console.h"
 #include "../util.h"
+#include "../paging.h"
 
 #define SATA_TIMEOUT 100000000u
 #define SATA_TFES (1u << 30)
@@ -145,6 +146,8 @@ void sata_driver_init(void)
             con_write("AHCI BAR unavailable\n", 0x04);
             continue;
         }
+        mmu_identity_map_range((uint64_t)hba, sizeof(*hba),
+                               PAGE_RW | PAGE_NX | PAGE_PCD | PAGE_PWT);
         if (!(hba->cap & (1u << 31)) &&
             ((uint64_t)command_list >> 32 || (uint64_t)received_fis >> 32 ||
              (uint64_t)&command_table >> 32 || (uint64_t)data_page >> 32)) {

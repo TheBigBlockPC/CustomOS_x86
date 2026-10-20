@@ -1,139 +1,155 @@
-#include "types.h"
-#include "memory.h"
-#include "console.h"
 #include "paging.h"
+#include "memory.h"
 #include "panic.h"
 
-#define PAGE_PRESENT   (1ULL << 0)
-#define PAGE_RW        (1ULL << 1)
-#define PAGE_USER      (1ULL << 2)
-#define PAGE_PWT       (1ULL << 3)
-#define PAGE_PCD       (1ULL << 4)
-#define PAGE_ACCESSED  (1ULL << 5)
-#define PAGE_DIRTY     (1ULL << 6)
-#define PAGE_PS (1ULL << 7)
+#define PAGE_TABLE_ADDR_MASK 0x000FFFFFFFFFF000ULL
+#define PAGE_2M_ADDR_MASK    0x000FFFFFFFE00000ULL
+#define MAP_FLAGS (PAGE_RW | PAGE_USER | PAGE_PWT | PAGE_PCD | PAGE_NX)
 
-#define PAGE_SIZE_4K   0x1000ULL
-#define PAGE_SIZE_2M   0x200000ULL
+typedef struct { uint64_t entries[512]; } __attribute__((aligned(4096))) page_table_t;
+static page_table_t PML4;
+static bool mmu_active;
+static uint64_t physical_mask;
 
-#define PAGE_TABLE_ADDR_MASK  0x000FFFFFFFFFF000ULL
-#define PAGE_2M_ADDR_MASK     0x000FFFFFFFE00000ULL
-#define VAL_2M_ADDR_MASK     0xFFFFFFFFFFE00000ULL
-#define HHFM_BASE 0xffff800000000000ULL
-typedef uint64_t pte_t;
-
-typedef struct {
-    pte_t entries[512];
-} __attribute__((aligned(4096))) page_table_t;
-
-
-static page_table_t PML4
-    __attribute__((aligned(4096)));
-
-static uint8_t mmu_active = 0;
-
-static uint64_t get_PDP(uint16_t index){
-    pte_t entry = PML4.entries[index];
-    if(entry & PAGE_PRESENT){
-        return entry & PAGE_TABLE_ADDR_MASK;
-    }else{
-        //con_write("allocated a PDP\n",0x02);
-        uint64_t PDP_addr = mem_alloc_page();
-        PML4.entries[index] = PDP_addr & PAGE_TABLE_ADDR_MASK | PAGE_PRESENT | PAGE_RW;
-        return PDP_addr;
-    }
-}
-static uint64_t get_PD(uint64_t pdp_phys, uint16_t index)
+static void cpuid(uint32_t leaf, uint32_t* a, uint32_t* b, uint32_t* c, uint32_t* d)
 {
-    page_table_t *pdp;
-
-    if (mmu_active)
-        pdp = (page_table_t *)(HHFM_BASE + pdp_phys);
-    else
-        pdp = (page_table_t *)pdp_phys;
-
-    pte_t entry = pdp->entries[index];
-
-    if (entry & PAGE_PRESENT) {
-        uint64_t pd_phys =
-            entry & PAGE_TABLE_ADDR_MASK;
-
-        if (mmu_active)
-            return HHFM_BASE + pd_phys;
-        else
-            return pd_phys;
-    }
-
-    uint64_t pd_phys = mem_alloc_page();
-
-    pdp->entries[index] =
-        (pd_phys & PAGE_TABLE_ADDR_MASK)
-        | PAGE_PRESENT
-        | PAGE_RW;
-
-    if (mmu_active)
-        return HHFM_BASE + pd_phys;
-    else
-        return pd_phys;
+    __asm__ volatile("cpuid" : "=a"(*a), "=b"(*b), "=c"(*c), "=d"(*d) : "a"(leaf), "c"(0));
 }
-static void set_PD_entry(uint64_t pd_base,uint16_t index,uint64_t addr){
-    page_table_t* pdp = (page_table_t*)pd_base;
-    uint64_t new_val = addr & PAGE_2M_ADDR_MASK | PAGE_PRESENT | PAGE_RW | PAGE_PS;
-    if((pdp->entries[index] & PAGE_PRESENT) && (pdp->entries[index] != new_val)){
-        //con_write("overlapping page \n",0x03);
-    }
-    pdp->entries[index] = new_val;
-}
-static inline void invlpg(void *addr)
+
+static bool canonical(uint64_t address)
 {
-    __asm__ volatile (
-        "invlpg (%0)"
-        :
-        : "r"(addr)
-        : "memory"
-    );
-}
-void mmu_map_2m(uint64_t virtual_addr,uint64_t physical_addr){
-    if(physical_addr & ~VAL_2M_ADDR_MASK){
-        panic("the physical adress must align in 2 mb\n");
-    }
-    if(virtual_addr & ~VAL_2M_ADDR_MASK){
-        panic("the virtual adress must align in 2 mb\n");
-    }
-    uint16_t pml4_index = (virtual_addr >> 39) & 0x1FF;
-    uint16_t pdp = (virtual_addr >> 30) & 0x1FF;
-    uint16_t pd = (virtual_addr >> 21) & 0x1FF;
-
-    uint64_t pdp_base = get_PDP(pml4_index);
-    uint64_t pd_base = get_PD(pdp_base,pdp);
-    set_PD_entry(pd_base,pd,physical_addr);
-    if(mmu_active){
-        invlpg((void *)virtual_addr);
-    }
+    return address <= 0x00007fffffffffffULL || address >= 0xffff800000000000ULL;
 }
 
-void identitymap_2m(uint64_t physical_addr){
-    mmu_map_2m(physical_addr,physical_addr);
-}
-
-static inline void load_cr3(uint64_t pml4_phys)
+static void validate_mapping(uint64_t virt, uint64_t phys, uint64_t size, uint64_t flags)
 {
-    
-    __asm__ volatile (
-        "cli\n\t"
-        "mov %0, %%cr3"
-        :
-        : "r"(pml4_phys)
-        : "memory"
-    );
+    if (!physical_mask) {
+        uint32_t a, b, c, d;
+        cpuid(0x80000000, &a, &b, &c, &d);
+        uint32_t bits = 36;
+        if (a >= 0x80000008) {
+            cpuid(0x80000008, &a, &b, &c, &d);
+            bits = a & 0xff;
+        }
+        if (bits < 32 || bits > 52) panic("MMU: unsupported physical address width");
+        physical_mask = ((1ULL << bits) - 1) & PAGE_TABLE_ADDR_MASK;
+    }
+    if ((virt & (size - 1)) || (phys & (size - 1)) || !canonical(virt) ||
+        !canonical(virt + size - 1) || (phys & ~physical_mask) || (flags & ~MAP_FLAGS))
+        panic("MMU: invalid mapping address or flags");
 }
 
-void set_mmu(){
-    uint64_t pml4_phys = (uint64_t)(&PML4);
-    load_cr3(pml4_phys);
-    mmu_active = 1;
+static page_table_t* table_at(uint64_t entry)
+{
+    return mem_phys_to_virt(entry & PAGE_TABLE_ADDR_MASK);
 }
 
-int get_mmu_active(){
-    return mmu_active == 1;
+static void flush_page(uint64_t address)
+{
+    if (mmu_active) __asm__ volatile("invlpg (%0)" :: "r"(address) : "memory");
 }
+
+static page_table_t* next_table(page_table_t* table, uint16_t index, uint64_t flags)
+{
+    uint64_t* entry = &table->entries[index];
+    if (!(*entry & PAGE_PRESENT))
+        *entry = mem_alloc_page() | PAGE_PRESENT | PAGE_RW;
+    if (*entry & PAGE_PS) panic("MMU: unexpected huge parent entry");
+    /* Restrictions belong on leaves; parents must permit user mappings. */
+    if (flags & PAGE_USER) *entry |= PAGE_USER;
+    return table_at(*entry);
+}
+
+static page_table_t* get_pd(uint64_t address, uint64_t flags)
+{
+    page_table_t* pdp = next_table(&PML4, (address >> 39) & 511, flags);
+    return next_table(pdp, (address >> 30) & 511, flags);
+}
+
+void mmu_map_4k(uint64_t virtual_addr, uint64_t physical_addr, uint64_t flags)
+{
+    validate_mapping(virtual_addr, physical_addr, PAGE_SIZE_4K, flags);
+    page_table_t* pd = get_pd(virtual_addr, flags);
+    uint64_t* pde = &pd->entries[(virtual_addr >> 21) & 511];
+    if ((*pde & (PAGE_PRESENT | PAGE_PS)) == (PAGE_PRESENT | PAGE_PS)) {
+        uint64_t old = *pde;
+        uint64_t pt_phys = mem_alloc_page();
+        page_table_t* pt = table_at(pt_phys);
+        uint64_t inherited = old & (MAP_FLAGS | PAGE_ACCESSED | PAGE_DIRTY);
+        for (uint64_t i = 0; i < 512; i++)
+            pt->entries[i] = ((old & PAGE_2M_ADDR_MASK) + i * PAGE_SIZE_4K) |
+                             inherited | PAGE_PRESENT;
+        *pde = pt_phys | PAGE_PRESENT | PAGE_RW | (old & PAGE_USER);
+        /* INVLPG also invalidates the former large-page translation. */
+        flush_page(virtual_addr);
+    }
+    page_table_t* pt = next_table(pd, (virtual_addr >> 21) & 511, flags);
+    pt->entries[(virtual_addr >> 12) & 511] = physical_addr | flags | PAGE_PRESENT;
+    flush_page(virtual_addr);
+}
+
+void mmu_map_2m(uint64_t virtual_addr, uint64_t physical_addr, uint64_t flags)
+{
+    validate_mapping(virtual_addr, physical_addr, PAGE_SIZE_2M, flags);
+    page_table_t* pd = get_pd(virtual_addr, flags);
+    uint64_t* entry = &pd->entries[(virtual_addr >> 21) & 511];
+    if ((*entry & PAGE_PRESENT) && !(*entry & PAGE_PS))
+        panic("MMU: 2M mapping would overwrite a 4K table");
+    *entry = physical_addr | flags | PAGE_PRESENT | PAGE_PS;
+    flush_page(virtual_addr);
+}
+
+void identitymap_4k(uint64_t address, uint64_t flags) { mmu_map_4k(address, address, flags); }
+void identitymap_2m(uint64_t address, uint64_t flags) { mmu_map_2m(address, address, flags); }
+
+void mmu_identity_map_range(uint64_t address, uint64_t length, uint64_t flags)
+{
+    if (!length) return;
+    if (length - 1 > ~address) panic("MMU: mapping range overflow");
+    uint64_t last = (address + length - 1) & ~(PAGE_SIZE_4K - 1);
+    uint64_t page = address & ~(PAGE_SIZE_4K - 1);
+    validate_mapping(page, page, PAGE_SIZE_4K, flags);
+    validate_mapping(last, last, PAGE_SIZE_4K, flags);
+    if (page <= 0x00007fffffffffffULL && last > 0x00007fffffffffffULL)
+        panic("MMU: range crosses the canonical address hole");
+    for (;;) {
+        identitymap_4k(page, flags);
+        if (page == last) break;
+        page += PAGE_SIZE_4K;
+    }
+}
+
+void set_mmu(void)
+{
+    uint32_t a, b, c, d;
+    cpuid(0x80000000, &a, &b, &c, &d);
+    if (a < 0x80000001) panic("MMU: missing NX capability");
+    cpuid(0x80000001, &a, &b, &c, &d);
+    if (!(d & (1u << 20))) panic("MMU: NX pages unsupported");
+    cpuid(1, &a, &b, &c, &d);
+    if (!(d & (1u << 16))) panic("MMU: PAT unsupported");
+    __asm__ volatile("cli" ::: "memory");
+    __asm__ volatile("rdmsr" : "=a"(a), "=d"(d) : "c"(0xc0000080));
+    a |= 1u << 11; /* EFER.NXE before loading tables containing NX bits. */
+    __asm__ volatile("wrmsr" :: "a"(a), "d"(d), "c"(0xc0000080) : "memory");
+    uint64_t cr0;
+    __asm__ volatile("mov %%cr0, %0" : "=r"(cr0));
+    cr0 |= 1ULL << 16; /* CR0.WP: read-only pages apply in ring zero too. */
+    uint64_t cr4;
+    __asm__ volatile("mov %%cr4, %0" : "=r"(cr4));
+    if (cr4 & (1ULL << 12)) panic("MMU: five-level firmware paging unsupported");
+    /* Drop firmware global/PCID translations; this kernel uses neither. */
+    cr4 &= ~((1ULL << 7) | (1ULL << 17));
+    __asm__ volatile("mov %0, %%cr4" :: "r"(cr4) : "memory");
+    /* Establish the PAT contract: slot 0 = WB RAM, slot 3 (PCD|PWT) = UC.
+     * Change memory types with caching disabled and caches/TLBs flushed. */
+    uint64_t uncached_cr0 = (cr0 | (1ULL << 30)) & ~(1ULL << 29);
+    __asm__ volatile("mov %0, %%cr0; wbinvd" :: "r"(uncached_cr0) : "memory");
+    __asm__ volatile("wrmsr" :: "c"(0x277), "a"(0x00070406u), "d"(0x00070406u) : "memory");
+    __asm__ volatile("wbinvd" ::: "memory");
+    __asm__ volatile("mov %0, %%cr3" :: "r"((uint64_t)&PML4) : "memory");
+    __asm__ volatile("mov %0, %%cr0" :: "r"(cr0) : "memory");
+    mmu_active = true;
+}
+
+int get_mmu_active(void) { return mmu_active; }

@@ -49,7 +49,7 @@ typedef struct {
 
 FS_fd_t parse_entry(uint8_t* page, int index){
     FAT_entry_t* entry = (FAT_entry_t*)(page + index*32);
-    uint32_t destination_clustor = (entry->first_cluster_high << 16) | entry->first_cluster_low;
+    uint32_t destination_clustor = ((uint32_t)entry->first_cluster_high << 16) | entry->first_cluster_low;
 /*  
     con_write(" ",0x07);
     print_uint64(destination_clustor);
@@ -148,7 +148,10 @@ uint64_t change_directory(
     uint8_t* page = block_storage_read_block(0, lba);
     char prepared_name[8];
     memory_set(&prepared_name[0],8,' ');
-    str_copy(&prepared_name[0],name,false);
+    for (int i = 0; name[i]; i++) {
+        if (i == 8) return 0; /* Short names only; never overwrite the stack. */
+        prepared_name[i] = name[i];
+    }
     for(int entry_index=0;entry_index<64;entry_index++){
         FS_fd_t fd = parse_entry(page,entry_index);
         if(fd.name[0] == 0) break;
@@ -328,6 +331,5 @@ void fs_init(){
     //uint64_t prev_cluster = change_directory(&metadata,efi_cluster,"BOOT");
     //con_write("\n", 0x07);
     //list_files(&metadata,prev_cluster);
-    uint64_t file_cluster = change_directory(&metadata,root_cluster,"TEST");
-    read_file(&metadata,file_cluster);
+    /* File-chain debugging belongs in an explicit shell/test command. */
 }

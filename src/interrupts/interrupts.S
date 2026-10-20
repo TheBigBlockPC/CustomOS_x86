@@ -1,66 +1,33 @@
 .text
-
 .extern interrupts_dispatch
-
-
-/*
- * Generate one tiny entry stub for every vector from 32 to 255.
- *
- * Every stub:
- *
- *     1. pushes its vector number
- *     2. jumps into the shared interrupt handler
- */
-
+.extern exceptions_dispatch
 .altmacro
 
+/* Normalize the frame: CPU error code or a synthetic zero, then vector. */
 .macro MAKE_INTERRUPT_STUB number
-
 .globl interrupt_stub_\number
-
 interrupt_stub_\number:
+    .if (\number != 8) && (\number != 10) && (\number != 11) && (\number != 12) && (\number != 13) && (\number != 14) && (\number != 17) && (\number != 21) && (\number != 29) && (\number != 30)
+        pushq $0
+    .endif
     pushq $\number
     jmp interrupt_common
-
 .endm
 
-
-.set vector, 32
-
-.rept 224
+.set vector, 0
+.rept 256
     MAKE_INTERRUPT_STUB %vector
     .set vector, vector + 1
 .endr
 
-
-/*
- * Common interrupt entry.
- *
- * On entry the CPU has already pushed:
- *
- *     RFLAGS
- *     CS
- *     RIP
- *
- * and the individual stub has pushed:
- *
- *     vector
- */
 interrupt_common:
-
-    /*
-     * Save all general-purpose registers.
-     */
-
     pushq %rax
     pushq %rbx
     pushq %rcx
     pushq %rdx
-
     pushq %rbp
     pushq %rsi
     pushq %rdi
-
     pushq %r8
     pushq %r9
     pushq %r10
@@ -70,62 +37,56 @@ interrupt_common:
     pushq %r14
     pushq %r15
 
+    movq %cr0, %rax
+    pushq %rax
+    movq %cr2, %rax
+    pushq %rax
+    movq %cr3, %rax
+    pushq %rax
+    movq %cr4, %rax
+    pushq %rax
+    xorq %rax, %rax
+    movw %ds, %ax
+    pushq %rax
+    movw %es, %ax
+    pushq %rax
+    movw %fs, %ax
+    pushq %rax
+    movw %gs, %ax
+    pushq %rax
+    pushq $0                      /* fx_state pointer */
 
-    /*
-     * Save where the register frame starts.
-     *
-     * r12 is already saved above, and is callee-saved.
-     */
+    /* r12/r13 are already saved and callee-saved in the Microsoft x64 ABI. */
     movq %rsp, %r12
-
-
-    /*
-     * C code expects DF = 0.
-     */
     cld
-
-
-    /*
-     * There are 15 saved registers:
-     *
-     *     15 * 8 = 120 bytes
-     *
-     * So the pushed vector number is at:
-     *
-     *     120(%r12)
-     *
-     * Microsoft x64 ABI:
-     * first argument goes into RCX.
-     */
-    movq 120(%r12), %rcx
-
-
-    /*
-     * Align stack for the C call.
-     */
     andq $-16, %rsp
-
-
-    /*
-     * Microsoft x64 ABI requires 32 bytes
-     * of shadow space for every function call.
-     */
-    subq $32, %rsp
-
-
+    subq $512, %rsp
+    movq %rsp, %r13
+    /* A #NM handler must not recursively fault while saving FPU state. All
+     * kernel C is built with -mgeneral-regs-only, so skipping is safe. */
+    testq $12, 64(%r12)           /* CR0.EM | CR0.TS */
+    jnz 1f
+    testq $512, 40(%r12)          /* CR4.OSFXSR */
+    jz 1f
+    fxsave64 (%r13)
+    movq %r13, (%r12)
+1:
+    subq $32, %rsp               /* ABI shadow space */
+    cmpq $32, 192(%r12)
+    jae 2f
+    movq %r12, %rcx
+    call exceptions_dispatch
+    jmp 3f
+2:
+    movq 192(%r12), %rcx
     call interrupts_dispatch
-
-
-    /*
-     * Restore our original interrupt stack.
-     */
+3:
+    cmpq $0, (%r12)
+    je 4f
+    fxrstor64 (%r13)
+4:
     movq %r12, %rsp
-
-
-    /*
-     * Restore registers in reverse order.
-     */
-
+    addq $72, %rsp               /* snapshots, not restored control regs */
     popq %r15
     popq %r14
     popq %r13
@@ -134,61 +95,25 @@ interrupt_common:
     popq %r10
     popq %r9
     popq %r8
-
     popq %rdi
     popq %rsi
     popq %rbp
-
     popq %rdx
     popq %rcx
     popq %rbx
     popq %rax
-
-
-    /*
-     * Remove the vector number pushed by
-     * the individual stub.
-     */
-    addq $8, %rsp
-
-
-    /*
-     * Restore RIP, CS and RFLAGS and resume
-     * the interrupted code.
-     */
-    iretq
-
-
-
-/*
- * Array of pointers to all generated interrupt stubs.
- *
- * C sees this as:
- *
- * extern void (*interrupt_stub_table[224])(void);
- *
- * table[0]   -> interrupt_stub_32
- * table[1]   -> interrupt_stub_33
- * ...
- * table[223] -> interrupt_stub_255
- */
+    addq $16, %rsp               /* vector and error code */
+    iretq                        /* RIP, CS, RFLAGS, RSP, SS in 64-bit mode */
 
 .data
-
 .globl interrupt_stub_table
 .p2align 3
-
 interrupt_stub_table:
-
-
 .macro MAKE_INTERRUPT_POINTER number
     .quad interrupt_stub_\number
 .endm
-
-
-.set vector, 32
-
-.rept 224
+.set vector, 0
+.rept 256
     MAKE_INTERRUPT_POINTER %vector
     .set vector, vector + 1
 .endr

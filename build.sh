@@ -11,6 +11,7 @@ clang \
   -fuse-ld=lld \
   -ffreestanding \
   -mno-red-zone \
+  -mgeneral-regs-only \
   -o bootx64.efi \
   src/main.c \
   src/console_renderer.c \

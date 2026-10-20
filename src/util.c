@@ -36,15 +36,15 @@ void str_copy(char* dest, char* src, bool add_null){
         i++;
     }
     if(add_null){
-        dest[i+1] = 0;
+        dest[i] = 0;
     }
 }
 
 bool str_start_comp(char* a, char* b){
     int i=0;
     while(true){
-        if(a[i] == 0) return true;
         if(b[i] == 0) return true;
+        if(a[i] == 0) return false;
         if(a[i] != b[i]) return false;
         i++;
     }
@@ -85,23 +85,14 @@ void print_uint64(uint64_t val){
     }
 }
 
-void print_uint64_dec(uint64_t val){
-    char dec_chars[10] = {'0','1','2','3','4','5','6','7','8','9'};
-    int digits = 0;
-    char buf[32];
-    if(val == 0){
-        con_write("0",0x07);
-    }
-    uint64_t val_temp = val;
-    for(int i =0;i<32;i++){
-        buf[i] = 0;
-    }
-    while(val_temp != 0){
-        uint64_t digit = val_temp % 10;
-        buf[31-digits] = dec_chars[digit];
-        digits++;
-        val_temp /= 10;
-    }
-    con_write((char*)(&buf[32-digits]),0x07);
-    con_write("\b",0x07);
+void print_uint64_dec(uint64_t val)
+{
+    char buffer[21]; /* 20 decimal digits plus terminator. */
+    int position = 20;
+    buffer[position] = 0;
+    do {
+        buffer[--position] = '0' + val % 10;
+        val /= 10;
+    } while (val);
+    con_write(buffer + position, 0x07);
 }

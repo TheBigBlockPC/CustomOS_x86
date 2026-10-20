@@ -47,6 +47,7 @@ static void put(char c, uint8_t color){
         return;
     }
     if(c == '\b'){
+        if (cursor_x == 0 && cursor_y == 0) return;
         cursor_x--;
         fixup_cursor();
         autoscroll();
@@ -82,9 +83,10 @@ void con_write(char* string, uint8_t color){
 
 void con_delete_cell(){
     int index = cursor_x + cursor_y * TERMINAL_W;
-    while(terminal[index].character != 0){
+    while(index < TERMINAL_W * TERMINAL_H - 1 && terminal[index].character != 0){
         terminal[index].character = terminal[index+1].character;
         index++;
     }
+    if (index == TERMINAL_W * TERMINAL_H - 1) terminal[index].character = 0;
     update_renderer();
 }

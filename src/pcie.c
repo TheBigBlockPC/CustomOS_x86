@@ -5,7 +5,7 @@
 #include "pcie.h"
 #include "util.h"
 
-#define PAGE_2M (2u * 1024u * 1024u)
+#define MMIO_FLAGS (PAGE_RW | PAGE_NX | PAGE_PCD | PAGE_PWT)
 
 typedef struct {
     acpi_sdt_header_t header;
@@ -28,7 +28,7 @@ static volatile uint8_t* pcie_config(uint32_t range, uint8_t bus,
     mcfg_entry_t* entry = &mcfg_entries[range];
     uint64_t address = entry->base + ((uint64_t)(bus - entry->first_bus) << 20)
                      + ((uint64_t)device << 15) + ((uint64_t)function << 12);
-    identitymap_2m(address & ~(uint64_t)(PAGE_2M - 1));
+    mmu_identity_map_range(address, PAGE_SIZE_4K, MMIO_FLAGS);
     return (volatile uint8_t*)address;
 }
 
@@ -86,7 +86,8 @@ uint64_t pcie_get_device_bar(uint32_t id, uint8_t bar)
 
     volatile uint16_t* command = (volatile uint16_t*)(cfg + 4);
     *command |= 6; /* Memory space and bus mastering for AHCI/NVMe DMA. */
-    identitymap_2m(address & ~(uint64_t)(PAGE_2M - 1));
-    identitymap_2m((address + 0x2000) & ~(uint64_t)(PAGE_2M - 1));
+    /* Map the register header. Drivers map their remaining register aperture
+     * explicitly; NVMe doorbell spacing is controller dependent. */
+    mmu_identity_map_range(address, PAGE_SIZE_4K, MMIO_FLAGS);
     return address;
 }

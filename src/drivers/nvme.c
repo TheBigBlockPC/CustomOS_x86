@@ -2,6 +2,7 @@
 #include "../pcie.h"
 #include "../console.h"
 #include "../util.h"
+#include "../paging.h"
 
 #define NVME_PAGE_SIZE 4096
 #define NVME_ADMIN_QUEUE_DEPTH 32
@@ -334,6 +335,9 @@ static int nvme_init(nvme_controller_t* c, uint64_t bar)
     nvme_barrier();
 
     uint32_t stride = 4u << ((c->cap >> 32) & 0xfu);
+    for (uint32_t index = 0; index <= 2 * NVME_IO_QUEUE_ID + 1; index++)
+        mmu_identity_map_range(bar + 0x1000 + (uint64_t)index * stride, 4,
+                               PAGE_RW | PAGE_NX | PAGE_PCD | PAGE_PWT);
     nvme_setup_queue(&c->admin, c->admin_sq_page, c->admin_cq_page,
                      admin_depth, bar + 0x1000, stride, 0);
     nvme_setup_queue(&c->io, c->io_sq_page, c->io_cq_page,

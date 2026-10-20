@@ -49,7 +49,7 @@ void on_input(char* input){
     if(k_sehll_state == BASE){
         parse_kernel_shell(input);
     }
-    if(k_sehll_state == FILESYSTEM){
+    else if(k_sehll_state == FILESYSTEM){
         parse_fs_shell(input);
     }
 
@@ -64,12 +64,12 @@ void on_input(char* input){
 
 void k_main(){
     con_write("kernel running\n",0x07);
+    gdt_init();
+    interrupts_init();
     setup_hhdm();
     set_mmu();
-    gdt_init();
     init_acpi();
     pci_init();
-    interrupts_init();
 
     block_storage_init();
     fs_init();
