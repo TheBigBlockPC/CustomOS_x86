@@ -11,6 +11,7 @@
 #include "util.h"
 #include "drivers/sata.h"
 #include "filesystem.h"
+#include "panic.h"
 
 enum Mode {
     BASE,
@@ -22,6 +23,12 @@ enum Mode k_sehll_state = BASE;
 void parse_kernel_shell(char* input){
     if(str_start_comp(input,"fs")){
         k_sehll_state = FILESYSTEM;
+    }
+
+    if(str_start_comp(input,"C_PF")){
+        char* INVALLID_ADDR = (char*)0xFFFFFFFFFF;
+        *INVALLID_ADDR=0;
+        con_write("CRASH",0x01);
     }
 }
 uint64_t fs_pos = 0;
@@ -66,6 +73,7 @@ void k_main(){
     con_write("kernel running\n",0x07);
     gdt_init();
     interrupts_init();
+    setup_default_exceptionhanders();
     setup_hhdm();
     set_mmu();
     init_acpi();
