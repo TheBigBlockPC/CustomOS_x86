@@ -3,6 +3,7 @@
 #include "util.h"
 #include "drivers/sata.h"
 #include "filesystem.h"
+#include "panic.h"
 
 static uint16_t read_le16(const uint8_t *p)
 {
@@ -98,6 +99,8 @@ typedef struct {
     uint64_t fat_start;
     uint64_t sectors_per_cluster;
     uint32_t partition_start_lba;
+    uint64_t root_cluster;
+    uint16_t bytes_per_sector;
 } partition_dmetadata_t;
 
 uint64_t get_cluster_LBA(
@@ -126,14 +129,13 @@ void list_files(
     }
     uint64_t lba = get_cluster_LBA(meta,cluster);
     uint8_t* page = block_storage_read_block(0, lba);
-    int i = 0;
-    while(true){
+
+    for(int i=0;i<64;i++){
         FS_fd_t fd = parse_entry(page,i);
         if(fd.name[0] == 0) break;
         if(fd.attr != 0x0F){
             print_fd(&fd);
         }
-        i++;
     }
 }
 
@@ -144,14 +146,12 @@ uint64_t change_directory(
 ){
     uint64_t lba = get_cluster_LBA(meta,cluster);
     uint8_t* page = block_storage_read_block(0, lba);
-    int entry_index = 0;
     char prepared_name[8];
     memory_set(&prepared_name[0],8,' ');
     str_copy(&prepared_name[0],name,false);
-    while(true){
+    for(int entry_index=0;entry_index<64;entry_index++){
         FS_fd_t fd = parse_entry(page,entry_index);
         if(fd.name[0] == 0) break;
-        entry_index++;
         
         bool matched = true;
         for(int i=0;i<8;i++){
@@ -166,23 +166,47 @@ uint64_t change_directory(
     return 0;
 }
 
+
+uint32_t fat_next_cluster(
+    partition_dmetadata_t* meta,
+    uint32_t cluster
+){
+    uint64_t fat_start_lba = meta->partition_start_lba + meta->fat_start;
+    uint64_t cluster_index_offset = cluster*4;
+    uint64_t cluster_lba_offset = cluster_index_offset/512;
+    uint64_t fat_block_lba=fat_start_lba+cluster_lba_offset;
+    uint64_t index_offset = cluster_index_offset-(cluster_lba_offset*512);
+    uint8_t* page = block_storage_read_block(0, fat_block_lba);
+
+    return (*((uint32_t*)(page+index_offset))) & 0x0FFFFFFF;
+}
+
 void read_file(
     partition_dmetadata_t* meta,
     uint64_t cluster
 ){
-    uint64_t lba = meta->partition_start_lba + meta->fat_start;
-    uint8_t* page = block_storage_read_block(0, lba);
-
     uint64_t target = cluster;
     while(true){
         con_write("Cluister: ",0x02);
         print_uint64(target);
         con_write("\n",0x07);
-        
-        uint64_t offset = target*4;
-        target = *((uint32_t*)(page+offset));
-        if(target == 0x0FFFFFFF) break;
+        target = fat_next_cluster(meta,target);
+        if(target >= 0x0FFFFFF8) break;
     }
+}
+
+partition_dmetadata_t metadata;
+
+uint64_t fs_cd(uint64_t cluster, char *name){
+    return change_directory(&metadata,cluster,name);
+}
+
+void fs_ls(uint64_t cluster){
+    list_files(&metadata,cluster);
+}
+
+uint64_t fs_root(){
+    return metadata.root_cluster;
 }
 
 void fs_init(){
@@ -270,15 +294,19 @@ void fs_init(){
         (uint64_t)partition_start_lba +
         root_sector;
     */
-    partition_dmetadata_t metadata;
+    
     metadata.first_data_sector = first_data_sector;
     metadata.fat_start = (uint64_t)reserved_sectors;
     metadata.partition_start_lba = partition_start_lba;
     metadata.sectors_per_cluster = sectors_per_cluster;
-
-    if((sectors_per_cluster * 512) > 4096){
+    metadata.bytes_per_sector = bytes_per_sector;
+    if((sectors_per_cluster * bytes_per_sector) > 4096){
         con_write("cluster > 4096 bytes\n",0x01);
     }
+    if((bytes_per_sector) != 512){
+        panic("unsupported sector size, sectors must be 512 bytes");
+    }
+    
 
     uint64_t root_lba = get_cluster_LBA(&metadata,root_cluster);
 
@@ -292,14 +320,14 @@ void fs_init(){
     print_uint64_dec(root_lba);
 
     con_write("\n", 0x07);
-
-    list_files(&metadata,root_cluster);
-    uint64_t efi_cluster = change_directory(&metadata,root_cluster,"EFI");
-    con_write("\n", 0x07);
-    list_files(&metadata,efi_cluster);
-    uint64_t prev_cluster = change_directory(&metadata,efi_cluster,"BOOT");
-    con_write("\n", 0x07);
-    list_files(&metadata,prev_cluster);
+    metadata.root_cluster = root_cluster;
+    //list_files(&metadata,root_cluster);
+    //uint64_t efi_cluster = change_directory(&metadata,root_cluster,"EFI");
+    //con_write("\n", 0x07);
+    //list_files(&metadata,efi_cluster);
+    //uint64_t prev_cluster = change_directory(&metadata,efi_cluster,"BOOT");
+    //con_write("\n", 0x07);
+    //list_files(&metadata,prev_cluster);
     uint64_t file_cluster = change_directory(&metadata,root_cluster,"TEST");
-    //read_file(&metadata,file_cluster);
+    read_file(&metadata,file_cluster);
 }

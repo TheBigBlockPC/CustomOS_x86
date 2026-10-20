@@ -1,233 +1,210 @@
-<mxfile host="65bd71144e">
-    <diagram id="oWusnq14ZevRr9GRbtPL" name="Page-1">
-        <mxGraphModel dx="722" dy="609" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
-            <root>
-                <mxCell id="0"/>
-                <mxCell id="1" parent="0"/>
-                <mxCell id="10" value="Bootloader" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="210" y="260" width="120" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="23" value="Input Subsystem" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="610" y="260" width="120" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="27" value="Graphics" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="210" y="360" width="120" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="28" value="" style="endArrow=classic;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="10" target="27" edge="1">
-                    <mxGeometry relative="1" as="geometry">
-                        <mxPoint x="330" y="400" as="sourcePoint"/>
-                        <mxPoint x="430" y="400" as="targetPoint"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="29" value="FB_Base" style="edgeLabel;resizable=0;html=1;;align=center;verticalAlign=middle;" parent="28" connectable="0" vertex="1">
-                    <mxGeometry relative="1" as="geometry"/>
-                </mxCell>
-                <mxCell id="31" value="Console Subsystem" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="410" y="360" width="120" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="36" value="" style="endArrow=classic;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="31" target="27" edge="1">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="410" y="320" as="sourcePoint"/>
-                        <mxPoint x="460" y="270" as="targetPoint"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="40" value="" style="sketch=0;aspect=fixed;pointerEvents=1;shadow=0;dashed=0;html=1;strokeColor=none;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;align=center;fillColor=#00188D;shape=mxgraph.azure.computer" parent="1" vertex="1">
-                    <mxGeometry x="110" y="367.5" width="50" height="45" as="geometry"/>
-                </mxCell>
-                <mxCell id="41" value="" style="endArrow=classic;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" source="27" target="40" edge="1">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="360" y="510" as="sourcePoint"/>
-                        <mxPoint x="410" y="460" as="targetPoint"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="50" value="Kernel" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="410" y="260" width="120" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="51" value="" style="endArrow=classic;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;" parent="1" source="10" target="31" edge="1">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="330" y="370" as="sourcePoint"/>
-                        <mxPoint x="380" y="320" as="targetPoint"/>
-                        <Array as="points">
-                            <mxPoint x="300" y="340"/>
-                            <mxPoint x="440" y="340"/>
-                        </Array>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="52" value="" style="endArrow=classic;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="10" target="50" edge="1">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="340" y="300" as="sourcePoint"/>
-                        <mxPoint x="390" y="250" as="targetPoint"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="55" value="k_main" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="52" vertex="1" connectable="0">
-                    <mxGeometry x="-0.0309" y="-1" relative="1" as="geometry">
-                        <mxPoint as="offset"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="53" value="" style="endArrow=classic;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="50" target="31" edge="1">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="530" y="350" as="sourcePoint"/>
-                        <mxPoint x="580" y="300" as="targetPoint"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="56" value="Keyboard IO PS2" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="810" y="260" width="120" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="60" value="TTY" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="610" y="360" width="120" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="61" value="" style="endArrow=classic;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="60" target="31" edge="1">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="590" y="310" as="sourcePoint"/>
-                        <mxPoint x="640" y="260" as="targetPoint"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="64" value="" style="endArrow=classic;html=1;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" parent="1" source="50" target="60" edge="1">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="580" y="280" as="sourcePoint"/>
-                        <mxPoint x="630" y="230" as="targetPoint"/>
-                        <Array as="points">
-                            <mxPoint x="570" y="305"/>
-                            <mxPoint x="570" y="375"/>
-                        </Array>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="65" value="Init" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="64" connectable="0" vertex="1">
-                    <mxGeometry x="0.6582" relative="1" as="geometry">
-                        <mxPoint as="offset"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="67" value="UEFI / FIrmware" style="rounded=0;whiteSpace=wrap;html=1;fillStyle=auto;dashed=1;" parent="1" vertex="1">
-                    <mxGeometry x="40" y="260" width="120" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="69" value="" style="endArrow=classic;startArrow=classic;html=1;dashed=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="67" target="10" edge="1">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="200" y="530" as="sourcePoint"/>
-                        <mxPoint x="250" y="480" as="targetPoint"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="75" value="Memory subsystem" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="210" y="160" width="120" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="79" value="Paging" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="410" y="160" width="120" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="80" value="" style="endArrow=classic;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="50" target="23" edge="1">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="560" y="290" as="sourcePoint"/>
-                        <mxPoint x="610" y="240" as="targetPoint"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="81" value="" style="endArrow=classic;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="23" target="60" edge="1">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="570" y="370" as="sourcePoint"/>
-                        <mxPoint x="620" y="320" as="targetPoint"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="84" value="" style="endArrow=classic;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="10" target="75" edge="1">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="340" y="270" as="sourcePoint"/>
-                        <mxPoint x="390" y="220" as="targetPoint"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="86" value="" style="endArrow=classic;startArrow=classic;html=1;exitX=0.25;exitY=0;exitDx=0;exitDy=0;entryX=0.75;entryY=1;entryDx=0;entryDy=0;" parent="1" source="50" target="75" edge="1">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="340" y="270" as="sourcePoint"/>
-                        <mxPoint x="390" y="220" as="targetPoint"/>
-                        <Array as="points">
-                            <mxPoint x="440" y="240"/>
-                            <mxPoint x="300" y="240"/>
-                        </Array>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="87" value="" style="endArrow=classic;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="50" target="79" edge="1">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="380" y="160" as="sourcePoint"/>
-                        <mxPoint x="430" y="110" as="targetPoint"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="88" value="" style="endArrow=classic;startArrow=classic;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="75" target="79" edge="1">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="320" y="130" as="sourcePoint"/>
-                        <mxPoint x="370" y="80" as="targetPoint"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="89" value="" style="endArrow=classic;startArrow=classic;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="23" target="56" edge="1">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="710" y="210" as="sourcePoint"/>
-                        <mxPoint x="760" y="160" as="targetPoint"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="90" value="Interrupt subsystem" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="610" y="160" width="120" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="92" value="" style="endArrow=classic;startArrow=classic;html=1;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0.25;entryY=1;entryDx=0;entryDy=0;" parent="1" source="50" target="90" edge="1">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="560" y="110" as="sourcePoint"/>
-                        <mxPoint x="610" y="60" as="targetPoint"/>
-                        <Array as="points">
-                            <mxPoint x="570" y="275"/>
-                            <mxPoint x="570" y="240"/>
-                            <mxPoint x="640" y="240"/>
-                        </Array>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="93" value="" style="endArrow=classic;startArrow=classic;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="90" target="56" edge="1">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="810" y="200" as="sourcePoint"/>
-                        <mxPoint x="860" y="150" as="targetPoint"/>
-                        <Array as="points">
-                            <mxPoint x="700" y="240"/>
-                            <mxPoint x="870" y="240"/>
-                        </Array>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="95" value="ACPI" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="210" y="60" width="120" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="96" value="PCIe" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="410" y="60" width="120" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="97" value="" style="endArrow=classic;startArrow=classic;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="95" target="96" edge="1">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="380" y="110" as="sourcePoint"/>
-                        <mxPoint x="430" y="60" as="targetPoint"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="98" value="" style="endArrow=classic;html=1;exitX=0.25;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="10" target="95" edge="1">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="190" y="220" as="sourcePoint"/>
-                        <mxPoint x="240" y="170" as="targetPoint"/>
-                        <Array as="points">
-                            <mxPoint x="240" y="240"/>
-                            <mxPoint x="190" y="240"/>
-                            <mxPoint x="190" y="140"/>
-                            <mxPoint x="270" y="140"/>
-                        </Array>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="99" value="" style="endArrow=classic;html=1;exitX=0.75;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="50" target="96" edge="1">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="550" y="200" as="sourcePoint"/>
-                        <mxPoint x="600" y="140" as="targetPoint"/>
-                        <Array as="points">
-                            <mxPoint x="500" y="240"/>
-                            <mxPoint x="550" y="240"/>
-                            <mxPoint x="550" y="140"/>
-                            <mxPoint x="470" y="140"/>
-                        </Array>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="100" value="NVME" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-                    <mxGeometry x="610" y="60" width="120" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="101" value="" style="endArrow=classic;startArrow=classic;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="96" target="100">
-                    <mxGeometry width="50" height="50" relative="1" as="geometry">
-                        <mxPoint x="570" y="200" as="sourcePoint"/>
-                        <mxPoint x="620" y="150" as="targetPoint"/>
-                    </mxGeometry>
-                </mxCell>
-            </root>
-        </mxGraphModel>
-    </diagram>
+<?xml version="1.0" encoding="utf-8"?>
+<mxfile host="app.diagrams.net" type="device">
+  <diagram id="customos-architecture" name="Current architecture">
+    <mxGraphModel dx="1500" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1740" pageHeight="1050" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="title" value="CustomOS x86-64 | current architecture" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=25;fontColor=#172B4D;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="50" y="18" width="950" height="48" as="geometry"/>
+        </mxCell>
+        <mxCell id="subtitle" value="One UEFI PE application enters a freestanding kernel after ExitBootServices. Solid arrows show calls or data flow; dashed arrows show setup or hardware relationships." style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=13;fontColor=#4D5A6C;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="50" y="67" width="1590" height="36" as="geometry"/>
+        </mxCell>
+        <mxCell id="boot_bg" value="" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#F1F5FF;strokeColor=#C6D7F2;fontColor=#233247;fontFamily=Helvetica;fontSize=0;fontStyle=0;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="120" width="1660" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="boot_label" value="BOOT / HANDOFF" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=13;fontColor=#45649A;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="131" width="480" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="core_bg" value="" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#F4F2FF;strokeColor=#D8CFFA;fontColor=#233247;fontFamily=Helvetica;fontSize=0;fontStyle=0;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="325" width="1660" height="195" as="geometry"/>
+        </mxCell>
+        <mxCell id="core_label" value="KERNEL PLATFORM SETUP" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=13;fontColor=#67559C;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="336" width="480" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="io_bg" value="" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#F0FBF6;strokeColor=#BFE5CF;fontColor=#233247;fontFamily=Helvetica;fontSize=0;fontStyle=0;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="545" width="1660" height="190" as="geometry"/>
+        </mxCell>
+        <mxCell id="io_label" value="POLLED INPUT / FRAMEBUFFER OUTPUT" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=13;fontColor=#38805D;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="556" width="480" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="storage_bg" value="" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFF7EF;strokeColor=#F1D4AE;fontColor=#233247;fontFamily=Helvetica;fontSize=0;fontStyle=0;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="760" width="1660" height="235" as="geometry"/>
+        </mxCell>
+        <mxCell id="storage_label" value="POLLED BLOCK STORAGE / FAT32 DISCOVERY" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=13;fontColor=#A66A24;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="771" width="480" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="firmware" value="UEFI firmware&lt;br&gt;&lt;font style=&quot;font-size:11px;font-weight:normal&quot;&gt;GOP + ACPI 2.0 RSDP&lt;/font&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#DCEAFF;strokeColor=#7099D1;fontColor=#233247;fontFamily=Helvetica;fontSize=15;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="80" y="190" width="220" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="efi" value="efi_main (main.c)&lt;br&gt;&lt;font style=&quot;font-size:11px;font-weight:normal&quot;&gt;GOP framebuffer; set_FB; console&lt;/font&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#DCEAFF;strokeColor=#7099D1;fontColor=#233247;fontFamily=Helvetica;fontSize=15;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="390" y="190" width="260" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="handoff" value="ExitBootServices + CPU handoff&lt;br&gt;&lt;font style=&quot;font-size:11px;font-weight:normal&quot;&gt;UEFI memory map; page bitmap; 2 MiB maps;&lt;br&gt;own 64 KiB stack&lt;/font&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#DCEAFF;strokeColor=#7099D1;fontColor=#233247;fontFamily=Helvetica;fontSize=15;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="740" y="182" width="330" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="kernel" value="k_main (kernel.c)&lt;br&gt;&lt;font style=&quot;font-size:11px;font-weight:normal&quot;&gt;MMU → GDT → ACPI → PCIe → IDT&lt;br&gt;storage → FAT32 → TTY → poll loop&lt;/font&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#BDD4FA;strokeColor=#45649A;fontColor=#233247;fontFamily=Helvetica;fontSize=15;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="182" width="350" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="memory" value="Physical memory manager&lt;br&gt;&lt;font style=&quot;font-size:11px;font-weight:normal&quot;&gt;UEFI free ranges; bitmap; 4 KiB pages&lt;/font&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#E7E0FF;strokeColor=#8A78C6;fontColor=#233247;fontFamily=Helvetica;fontSize=15;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="80" y="402" width="250" height="76" as="geometry"/>
+        </mxCell>
+        <mxCell id="paging" value="Paging / MMU&lt;br&gt;&lt;font style=&quot;font-size:11px;font-weight:normal&quot;&gt;2 MiB identity maps + HHDM; CR3&lt;/font&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#E7E0FF;strokeColor=#8A78C6;fontColor=#233247;fontFamily=Helvetica;fontSize=15;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="395" y="402" width="250" height="76" as="geometry"/>
+        </mxCell>
+        <mxCell id="cpu" value="CPU tables&lt;br&gt;&lt;font style=&quot;font-size:11px;font-weight:normal&quot;&gt;ring-0 GDT; IDT stubs (32–255)&lt;/font&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#E7E0FF;strokeColor=#8A78C6;fontColor=#233247;fontFamily=Helvetica;fontSize=15;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="710" y="402" width="250" height="76" as="geometry"/>
+        </mxCell>
+        <mxCell id="acpi" value="ACPI&lt;br&gt;&lt;font style=&quot;font-size:11px;font-weight:normal&quot;&gt;RSDP → XSDT → MCFG&lt;/font&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#E7E0FF;strokeColor=#8A78C6;fontColor=#233247;fontFamily=Helvetica;fontSize=15;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1025" y="402" width="250" height="76" as="geometry"/>
+        </mxCell>
+        <mxCell id="pcie" value="PCIe (ECAM)&lt;br&gt;&lt;font style=&quot;font-size:11px;font-weight:normal&quot;&gt;MCFG ranges; class scan; BAR/MMIO&lt;/font&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#E7E0FF;strokeColor=#8A78C6;fontColor=#233247;fontFamily=Helvetica;fontSize=15;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1340" y="402" width="280" height="76" as="geometry"/>
+        </mxCell>
+        <mxCell id="ps2" value="PS/2 keyboard&lt;br&gt;&lt;font style=&quot;font-size:11px;font-weight:normal&quot;&gt;poll ports 0x64 / 0x60&lt;/font&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#D8F1E4;strokeColor=#70B78A;fontColor=#233247;fontFamily=Helvetica;fontSize=15;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="80" y="620" width="205" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="input" value="Input subsystem&lt;br&gt;&lt;font style=&quot;font-size:11px;font-weight:normal&quot;&gt;scancode → ASCII; Shift state&lt;/font&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#D8F1E4;strokeColor=#70B78A;fontColor=#233247;fontFamily=Helvetica;fontSize=15;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="340" y="620" width="225" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="tty" value="TTY&lt;br&gt;&lt;font style=&quot;font-size:11px;font-weight:normal&quot;&gt;line buffer; echo callback&lt;/font&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#D8F1E4;strokeColor=#70B78A;fontColor=#233247;fontFamily=Helvetica;fontSize=15;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="620" y="620" width="205" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="console" value="Console&lt;br&gt;&lt;font style=&quot;font-size:11px;font-weight:normal&quot;&gt;64 × 40 cells; cursor; scrolling&lt;/font&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#D8F1E4;strokeColor=#70B78A;fontColor=#233247;fontFamily=Helvetica;fontSize=15;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="880" y="620" width="210" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="renderer" value="Renderer&lt;br&gt;&lt;font style=&quot;font-size:11px;font-weight:normal&quot;&gt;8 × 8 font at 2×; changed cells&lt;/font&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#D8F1E4;strokeColor=#70B78A;fontColor=#233247;fontFamily=Helvetica;fontSize=15;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1145" y="620" width="210" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="framebuffer" value="GOP framebuffer&lt;br&gt;&lt;font style=&quot;font-size:11px;font-weight:normal&quot;&gt;direct pixel writes to display&lt;/font&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#D8F1E4;strokeColor=#70B78A;fontColor=#233247;fontFamily=Helvetica;fontSize=15;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1410" y="620" width="210" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="disks" value="Disk hardware&lt;br&gt;&lt;font style=&quot;font-size:11px;font-weight:normal&quot;&gt;NVMe or AHCI/SATA&lt;/font&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFE7CC;strokeColor=#D49B56;fontColor=#233247;fontFamily=Helvetica;fontSize=15;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="80" y="848" width="210" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="nvme" value="NVMe driver&lt;br&gt;&lt;font style=&quot;font-size:11px;font-weight:normal&quot;&gt;admin + I/O queues; DMA reads&lt;/font&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFE7CC;strokeColor=#D49B56;fontColor=#233247;fontFamily=Helvetica;fontSize=15;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="385" y="807" width="255" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="sata" value="AHCI / SATA driver&lt;br&gt;&lt;font style=&quot;font-size:11px;font-weight:normal&quot;&gt;port setup; IDENTIFY; DMA reads&lt;/font&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFE7CC;strokeColor=#D49B56;fontColor=#233247;fontFamily=Helvetica;fontSize=15;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="385" y="902" width="255" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="block" value="Block storage selector&lt;br&gt;&lt;font style=&quot;font-size:11px;font-weight:normal&quot;&gt;try NVMe, fall back to SATA;&lt;br&gt;4 KiB reads, drive 0&lt;/font&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFDAB2;strokeColor=#D49B56;fontColor=#233247;fontFamily=Helvetica;fontSize=15;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="760" y="844" width="275" height="82" as="geometry"/>
+        </mxCell>
+        <mxCell id="fat32" value="FAT32 probe (filesystem.c)&lt;br&gt;&lt;font style=&quot;font-size:11px;font-weight:normal&quot;&gt;MBR partition; BPB; root / EFI / BOOT&lt;br&gt;directory listings to console&lt;/font&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFDAB2;strokeColor=#D49B56;fontColor=#233247;fontFamily=Helvetica;fontSize=15;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="837" width="355" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="boot1" value="boot image" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#567CB4;fontColor=#567CB4;fontSize=11;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="firmware" target="efi">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="boot2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#567CB4;fontColor=#567CB4;fontSize=11;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="efi" target="handoff">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="boot3" value="k_main" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#567CB4;fontColor=#567CB4;fontSize=11;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="handoff" target="kernel">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="mem" value="free page map" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#8A78C6;fontColor=#8A78C6;fontSize=11;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=6 4;exitX=0.1;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="handoff" target="memory">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="680" y="308"/>
+              <mxPoint x="205" y="308"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="mempage" value="allocates page tables" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#8A78C6;fontColor=#8A78C6;fontSize=11;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="memory" target="paging">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="acpi_rsdp" value="RSDP" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#8A78C6;fontColor=#8A78C6;fontSize=11;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=6 4;exitX=0.9;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="handoff" target="acpi">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1050" y="308"/>
+              <mxPoint x="1150" y="308"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="acpi_pcie" value="MCFG" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#8A78C6;fontColor=#8A78C6;fontSize=11;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="acpi" target="pcie">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="key1" value="scancodes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#56A778;fontColor=#56A778;fontSize=11;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ps2" target="input">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="key2" value="key events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#56A778;fontColor=#56A778;fontSize=11;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="input" target="tty">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="echo" value="typed text" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#56A778;fontColor=#56A778;fontSize=11;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="tty" target="console">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="render" value="cell buffer" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#56A778;fontColor=#56A778;fontSize=11;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="console" target="renderer">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="pixels" value="pixels" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#56A778;fontColor=#56A778;fontSize=11;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="renderer" target="framebuffer">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="disk_nvme" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#D49B56;fontColor=#D49B56;fontSize=11;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="disks" target="nvme">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="disk_sata" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#D49B56;fontColor=#D49B56;fontSize=11;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="disks" target="sata">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="nvme_block" value="preferred" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#D49B56;fontColor=#D49B56;fontSize=11;labelBackgroundColor=#FFFFFF;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" edge="1" parent="1" source="nvme" target="block">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="sata_block" value="fallback" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#D49B56;fontColor=#D49B56;fontSize=11;labelBackgroundColor=#FFFFFF;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" edge="1" parent="1" source="sata" target="block">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="block_fs" value="block_storage_read_block" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#D49B56;fontColor=#D49B56;fontSize=11;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="block" target="fat32">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="pcie_nvme" value="device scan + BAR" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#8A78C6;fontColor=#8A78C6;fontSize=11;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=6 4;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="pcie" target="nvme">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1660" y="505"/>
+              <mxPoint x="1660" y="748"/>
+              <mxPoint x="510" y="748"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="pcie_sata" value="AHCI BAR" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#8A78C6;fontColor=#8A78C6;fontSize=11;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=6 4;exitX=1;exitY=0.7;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="pcie" target="sata">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1680" y="505"/>
+              <mxPoint x="1680" y="982"/>
+              <mxPoint x="510" y="982"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="kernel_tty" value="TTY init + handler setup" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#56A778;fontColor=#56A778;fontSize=11;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=6 4;exitX=0.4;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="kernel" target="tty">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1310" y="309"/>
+              <mxPoint x="700" y="309"/>
+              <mxPoint x="700" y="537"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="tty_callback" value="on_input callback" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#56A778;fontColor=#56A778;fontSize=11;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=6 4;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.75;entryDx=0;entryDy=0;" edge="1" parent="1" source="tty" target="kernel">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="825" y="735"/>
+              <mxPoint x="1650" y="735"/>
+              <mxPoint x="1650" y="295"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="fs_console" value="directory output" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#D49B56;fontColor=#D49B56;fontSize=11;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=6 4;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="fat32" target="console">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1120" y="885"/>
+              <mxPoint x="1120" y="720"/>
+              <mxPoint x="985" y="720"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="note" value="Current scope: single kernel address space; polling for keyboard and storage; FAT32 code probes and lists directories (no general file API)." style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=12;fontColor=#4D5A6C;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="65" y="1005" width="1570" height="27" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
 </mxfile>

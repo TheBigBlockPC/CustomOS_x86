@@ -34,6 +34,7 @@ static void key_event(uint8_t scancode, char ascii, int k_down){
         return;
     }
     if(input_chars>=TTY_MAX_INPUT) return;
+    if(ascii == 0) return;
     input_buffer[input_chars] = ascii;
     input_chars++;
     char str[] = {ascii,0x00};

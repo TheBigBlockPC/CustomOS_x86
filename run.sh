@@ -120,9 +120,9 @@ qemu-system-x86_64 \
   -drive if=none,id=nvme0,format=raw,file="$FAT_IMG" \
   -device nvme,drive=nvme0,serial=NVME0001 \
   -device qemu-xhci,id=xhci \
-  -device usb-kbd,bus=xhci.0 \
   -vga std \
   -no-reboot \
   -no-shutdown \
   -d int,cpu_reset,guest_errors \
   -D qemu.log
+# -device usb-kbd,bus=xhci.0 \

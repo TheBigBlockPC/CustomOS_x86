@@ -40,6 +40,16 @@ void str_copy(char* dest, char* src, bool add_null){
     }
 }
 
+bool str_start_comp(char* a, char* b){
+    int i=0;
+    while(true){
+        if(a[i] == 0) return true;
+        if(b[i] == 0) return true;
+        if(a[i] != b[i]) return false;
+        i++;
+    }
+}
+
 uint64_t int_div_round_up(uint64_t a, uint64_t b){
     return a / b + (a % b != 0);
 }
