@@ -56,6 +56,17 @@ int main(void)
     CHECK(mmap((void*)0x100000, 0x400000, 3, 0x32, -1, 0) == (void*)0x100000);
     CHECK(mmap((void*)0x80000000, 0x40000, 3, 0x32, -1, 0) == (void*)0x80000000);
     reset();
+    mem_set_kernel_image(0x100000, 0x3000);
+    CHECK(mem_kernel_to_phys((void*)KERNEL_BASE) == 0x100000);
+    CHECK(mem_kernel_to_phys((void*)(KERNEL_BASE + 0x2fff)) == 0x102fff);
+    EXPECT_PANIC(mem_kernel_to_phys((void*)(KERNEL_BASE + 0x3000)));
+    EXPECT_PANIC(mem_kernel_to_phys((void*)0x100000));
+    CHECK(mem_phys_to_virt(0x101000) == (void*)0x101000);
+    mmu_active = true;
+    CHECK(mem_phys_to_virt(0x101000) == (void*)(KERNEL_BASE + 0x1000));
+    CHECK(mem_phys_to_virt(0x103000) == (void*)(HHDM_BASE + 0x103000));
+    mmu_active = false;
+    mem_set_kernel_image(0, 0);
     mem_add_free_pages(0, 2);
     CHECK(free_ranges[0].start == PAGE_SIZE && free_ranges[0].page_count == 1);
     reset();

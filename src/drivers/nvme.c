@@ -3,6 +3,7 @@
 #include "../console.h"
 #include "../util.h"
 #include "../paging.h"
+#include "../memory.h"
 
 #define NVME_PAGE_SIZE 4096
 #define NVME_ADMIN_QUEUE_DEPTH 32
@@ -63,7 +64,7 @@ typedef struct {
     uint8_t initialized;
     nvme_queue_t admin, io;
 
-    /* DMA addresses equal virtual addresses while the kernel is identity mapped. */
+    /* CPU pointers are in the high kernel image; DMA uses physical addresses. */
     uint8_t admin_sq_page[NVME_PAGE_SIZE] __attribute__((aligned(NVME_PAGE_SIZE)));
     uint8_t admin_cq_page[NVME_PAGE_SIZE] __attribute__((aligned(NVME_PAGE_SIZE)));
     uint8_t io_sq_page[NVME_PAGE_SIZE] __attribute__((aligned(NVME_PAGE_SIZE)));
@@ -81,7 +82,7 @@ static void nvme_barrier(void)
 
 static uint64_t nvme_phys(const void* ptr)
 {
-    return (uint64_t)ptr;
+    return mem_kernel_to_phys(ptr);
 }
 
 static int nvme_wait_ready(nvme_controller_t* c, uint8_t wanted)

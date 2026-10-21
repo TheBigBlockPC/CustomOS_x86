@@ -3,6 +3,7 @@
 #include "paging.h"
 #include "util.h"
 #include "panic.h"
+#include "boot.h"
 
 #define MAX_FREE_RANGES 128
 
@@ -11,6 +12,20 @@ static size_t free_range_count;
 static uint64_t total_page_count, highest_page, free_page_count;
 static uint64_t bitmap_phys, bitmap_pages, next_page;
 static bool memory_initialized;
+static uint64_t kernel_physical, kernel_size;
+
+void mem_set_kernel_image(uint64_t physical, uint64_t size)
+{
+    kernel_physical = physical;
+    kernel_size = size;
+}
+
+uint64_t mem_kernel_to_phys(const void* pointer)
+{
+    uint64_t offset = (uint64_t)pointer - KERNEL_BASE;
+    if (offset >= kernel_size) panic("PMM: pointer outside kernel image");
+    return kernel_physical + offset;
+}
 
 void mem_add_free_pages(uint64_t start, uint64_t page_count)
 {
@@ -44,6 +59,8 @@ uint64_t mem_get_free_page_count(void) { return free_page_count; }
 
 void* mem_phys_to_virt(uint64_t address)
 {
+    if (get_mmu_active() && address >= kernel_physical && address - kernel_physical < kernel_size)
+        return (void*)(KERNEL_BASE + address - kernel_physical);
     return (void*)(address + (get_mmu_active() ? HHDM_BASE : 0));
 }
 

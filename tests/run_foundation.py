@@ -39,14 +39,19 @@ def main():
                                 '    fs_pos = fs_root();\n    foundation_boot_complete(fs_pos);')
         (temporary / 'kernel.c').write_text(kernel)
         sources = sorted(p for p in (ROOT / 'src').rglob('*')
-                         if p.suffix in ('.c', '.S') and p.name != 'kernel.c')
+                         if p.suffix in ('.c', '.S') and p.name not in ('kernel.c', 'main.c'))
         tree = temporary / 'test_env'
         shutil.copytree(ROOT / 'test_env', tree)
-        output = tree / 'EFI/BOOT/bootx64.efi'
-        run(['clang', '-target', 'x86_64-pc-windows-msvc', '-ffreestanding',
-             '-fno-builtin', '-nostdlib', '-mno-red-zone', '-mgeneral-regs-only',
-             '-fuse-ld=lld', '-Wl,-entry:efi_main', '-Wl,-subsystem:efi_application',
-             '-I', str(ROOT / 'src'), '-o', str(output),
+        flags = ['clang', '-target', 'x86_64-pc-windows-msvc', '-ffreestanding',
+                 '-fno-builtin', '-nostdlib', '-mno-red-zone', '-mgeneral-regs-only',
+                 '-fno-stack-protector', '-fuse-ld=lld']
+        run([*flags, '-Wl,-entry:efi_main', '-Wl,-subsystem:efi_application',
+             '-o', str(tree / 'EFI/BOOT/bootx64.efi'),
+             *[str(ROOT / 'src' / name) for name in
+               ('main.c', 'console.c', 'console_renderer.c', 'util.c')]])
+        run([*flags, '-Wl,-entry:kernel_entry', '-Wl,-subsystem:native',
+             '-Wl,-base:0xffffffff80000000', '-Wl,-fixed', '-Wl,-dynamicbase:no',
+             '-I', str(ROOT / 'src'), '-o', str(tree / 'EFI/BOOT/kernel.exe'),
              *map(str, sources), str(temporary / 'kernel.c'),
              str(ROOT / 'tests/foundation_kernel.c'), str(ROOT / 'tests/foundation_probes.S')])
         spec = importlib.util.spec_from_file_location('fat_builder', ROOT / 'make_fat32_image.py')
@@ -80,7 +85,8 @@ def main():
                 raise
             markers = debug.read_text() if debug.exists() else ""
             print(markers, end='', flush=True)
-            if result.returncode != 33 or 'STORAGE_BOOT_OK' not in markers:
+            if (result.returncode != 33 or 'STORAGE_BOOT_OK' not in markers or
+                    'HIGH_KERNEL_HANDOFF_OK' not in markers):
                 print(result.stderr.decode(), trace.read_text()[-6000:] if trace.exists() else "No trace")
                 raise RuntimeError(name + ' failed')
         print('PASS: all QEMU foundation and storage boots', flush=True)

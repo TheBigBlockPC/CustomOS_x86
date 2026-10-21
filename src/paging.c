@@ -147,7 +147,7 @@ void set_mmu(void)
     __asm__ volatile("mov %0, %%cr0; wbinvd" :: "r"(uncached_cr0) : "memory");
     __asm__ volatile("wrmsr" :: "c"(0x277), "a"(0x00070406u), "d"(0x00070406u) : "memory");
     __asm__ volatile("wbinvd" ::: "memory");
-    __asm__ volatile("mov %0, %%cr3" :: "r"((uint64_t)&PML4) : "memory");
+    __asm__ volatile("mov %0, %%cr3" :: "r"(mem_kernel_to_phys(&PML4)) : "memory");
     __asm__ volatile("mov %0, %%cr0" :: "r"(cr0) : "memory");
     mmu_active = true;
 }

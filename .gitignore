@@ -1,4 +1,5 @@
 BIOS
 bootx64.efi
+kernel.exe
 *.log
 *.img

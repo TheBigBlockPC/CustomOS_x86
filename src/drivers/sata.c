@@ -4,6 +4,7 @@
 #include "../console.h"
 #include "../util.h"
 #include "../paging.h"
+#include "../memory.h"
 
 #define SATA_TIMEOUT 100000000u
 #define SATA_TFES (1u << 30)
@@ -70,7 +71,7 @@ static int sata_command(uint8_t opcode, uint64_t lba, uint16_t count, uint32_t b
 {
     if (!sata_wait(&port->tfd, 0x88, 0)) return 0;
     memory_zero(&command_table, sizeof(command_table));
-    command_table.prdt.address = (uint64_t)data_page;
+    command_table.prdt.address = mem_kernel_to_phys(data_page);
     command_table.prdt.byte_count = bytes - 1;
 
     uint8_t* fis = command_table.fis;
@@ -107,9 +108,9 @@ static int sata_setup_port(void)
 
     memory_zero(command_list, sizeof(command_list));
     memory_zero(received_fis, sizeof(received_fis));
-    command_list[0].table_address = (uint64_t)&command_table;
-    port->clb = (uint64_t)command_list;
-    port->fb = (uint64_t)received_fis;
+    command_list[0].table_address = mem_kernel_to_phys(&command_table);
+    port->clb = mem_kernel_to_phys(command_list);
+    port->fb = mem_kernel_to_phys(received_fis);
     port->serr = 0xffffffffu;
     port->is = 0xffffffffu;
     port->cmd |= 1u << 4; /* Receive FISes before starting commands. */
@@ -149,8 +150,8 @@ void sata_driver_init(void)
         mmu_identity_map_range((uint64_t)hba, sizeof(*hba),
                                PAGE_RW | PAGE_NX | PAGE_PCD | PAGE_PWT);
         if (!(hba->cap & (1u << 31)) &&
-            ((uint64_t)command_list >> 32 || (uint64_t)received_fis >> 32 ||
-             (uint64_t)&command_table >> 32 || (uint64_t)data_page >> 32)) {
+            (mem_kernel_to_phys(command_list) >> 32 || mem_kernel_to_phys(received_fis) >> 32 ||
+             mem_kernel_to_phys(&command_table) >> 32 || mem_kernel_to_phys(data_page) >> 32)) {
             con_write("AHCI requires DMA memory below 4 GiB\n", 0x04);
             continue;
         }

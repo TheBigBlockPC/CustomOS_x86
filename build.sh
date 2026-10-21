@@ -1,19 +1,24 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
+cd "$(dirname "$0")"
 
-clang \
-  -target x86_64-pc-windows-msvc \
-  -ffreestanding \
-  -fno-builtin \
-  -nostdlib \
-  -Wl,-entry:efi_main \
-  -Wl,-subsystem:efi_application \
-  -fuse-ld=lld \
-  -ffreestanding \
-  -mno-red-zone \
-  -mgeneral-regs-only \
+flags=(
+  -target x86_64-pc-windows-msvc
+  -ffreestanding -fno-builtin -nostdlib
+  -mno-red-zone -mgeneral-regs-only -fno-stack-protector
+  -fuse-ld=lld
+)
+
+clang "${flags[@]}" \
+  -Wl,-entry:efi_main -Wl,-subsystem:efi_application \
   -o bootx64.efi \
-  src/main.c \
+  src/main.c src/console_renderer.c src/console.c src/util.c
+
+clang "${flags[@]}" \
+  -Wl,-entry:kernel_entry -Wl,-subsystem:native \
+  -Wl,-base:0xffffffff80000000 -Wl,-fixed -Wl,-dynamicbase:no \
+  -o kernel.exe \
+  src/boot.c \
   src/console_renderer.c \
   src/console.c \
   src/kernel.c \
@@ -35,4 +40,5 @@ clang \
   src/drivers/sata.c \
   src/filesystem.c
 
-cp bootx64.efi ./test_env/EFI/BOOT/
+mkdir -p test_env/EFI/BOOT
+cp bootx64.efi kernel.exe test_env/EFI/BOOT/

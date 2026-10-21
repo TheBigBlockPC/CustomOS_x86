@@ -2,9 +2,6 @@
 #include "console_renderer.h"
 #include "console.h"
 
-#define TERMINAL_W 64
-#define TERMINAL_H 40
-
 static terminal_character terminal[TERMINAL_W*TERMINAL_H];
 static int cursor_x;
 static int cursor_y;
@@ -36,6 +33,21 @@ static void autoscroll(){
 }
 static void update_renderer(){
     draw_chars(terminal,cursor_x,cursor_y);
+}
+
+void con_export_state(console_state_t* state)
+{
+    for (int i = 0; i < TERMINAL_W * TERMINAL_H; i++) state->cells[i] = terminal[i];
+    state->cursor_x = cursor_x;
+    state->cursor_y = cursor_y;
+}
+
+void con_import_state(const console_state_t* state)
+{
+    for (int i = 0; i < TERMINAL_W * TERMINAL_H; i++) terminal[i] = state->cells[i];
+    cursor_x = state->cursor_x;
+    cursor_y = state->cursor_y;
+    update_renderer();
 }
 static void put(char c, uint8_t color){
     int index = cursor_x + cursor_y * TERMINAL_W;

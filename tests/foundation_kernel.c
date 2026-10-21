@@ -2,6 +2,7 @@
 #include "memory.h"
 #include "paging.h"
 #include "interrupts/interrupts.h"
+#include "boot.h"
 
 extern int test_register_frame(void);
 extern void test_ud(void);
@@ -13,6 +14,7 @@ extern char test_ud_resume, test_gp_resume, test_write_resume, test_execute_resu
 static volatile uint64_t seen;
 static volatile uint64_t irq_seen;
 static uint64_t expected_address, expected_error, resume_address;
+static console_state_t boot_console;
 
 static void legacy_handler(void) { irq_seen++; }
 
@@ -52,15 +54,19 @@ static void fault_handler(exception_frame_t* frame)
 
 static uint64_t entry_at(uint64_t address, bool* huge)
 {
+    *huge = false;
     uint64_t cr3;
     __asm__ volatile("mov %%cr3, %0" : "=r"(cr3));
-    /* The static root belongs to the identity-mapped image, not PMM RAM. */
-    uint64_t* table = (uint64_t*)(cr3 & ~0xfffULL);
+    /* The static root belongs to the high kernel image, not PMM RAM. */
+    uint64_t* table = mem_phys_to_virt(cr3 & ~0xfffULL);
     uint64_t entry = table[(address >> 39) & 511];
+    if (!(entry & PAGE_PRESENT)) return 0;
     table = mem_phys_to_virt(entry & 0x000ffffffffff000ULL);
     entry = table[(address >> 30) & 511];
+    if (!(entry & PAGE_PRESENT)) return 0;
     table = mem_phys_to_virt(entry & 0x000ffffffffff000ULL);
     entry = table[(address >> 21) & 511];
+    if (!(entry & PAGE_PRESENT)) return 0;
     *huge = (entry & PAGE_PS) != 0;
     if (*huge) return entry;
     table = mem_phys_to_virt(entry & 0x000ffffffffff000ULL);
@@ -70,6 +76,27 @@ static uint64_t entry_at(uint64_t address, bool* huge)
 void foundation_selftest(void)
 {
     debug("FOUNDATION_START\n");
+    REQUIRE((uint64_t)&foundation_selftest >= 0xffffffff80000000ULL);
+    REQUIRE(mem_kernel_to_phys(&foundation_selftest) < 0x100000000ULL);
+    REQUIRE(mem_phys_to_virt(mem_kernel_to_phys(&foundation_selftest)) == (void*)&foundation_selftest);
+    con_export_state(&boot_console);
+    const char* loader_message = "Exiting boot services...";
+    bool found_message = false;
+    for (uint64_t i = 0; i < TERMINAL_W * TERMINAL_H; i++) {
+        uint64_t j = 0;
+        while (loader_message[j] && i + j < TERMINAL_W * TERMINAL_H &&
+               boot_console.cells[i + j].character == loader_message[j]) j++;
+        if (!loader_message[j]) found_message = true;
+    }
+    REQUIRE(found_message);
+    uint64_t free_pages = mem_get_free_page_count();
+    mem_free_page(mem_kernel_to_phys(&foundation_selftest) & ~0xfffULL);
+    REQUIRE(mem_get_free_page_count() == free_pages);
+    /* The framebuffer still uses low MMIO mappings, but the kernel's old
+     * physical alias must be absent from the final tables. */
+    bool low_huge;
+    REQUIRE(!(entry_at(mem_kernel_to_phys(&foundation_selftest), &low_huge) & PAGE_PRESENT));
+    debug("HIGH_KERNEL_HANDOFF_OK\n");
     exceptions_set_handler(3, frame_handler);
     REQUIRE(test_register_frame() == 1);
     REQUIRE(seen == 1);

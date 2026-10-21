@@ -1,6 +1,17 @@
 # Memory and exception foundation
 
-The kernel remains identity mapped. PMM-managed RAM and the allocator bitmap
+The kernel is a separate fixed-address PE32+ executable mapped at
+`0xffffffff80000000`. `bootx64.efi` reads `EFI/BOOT/kernel.exe` from its own boot
+volume, loads its sections into reserved physical pages below 4 GiB, and maps
+them with their section permissions. Temporary tables preserve firmware's
+lower-half mappings during the handoff; the kernel replaces those tables after
+importing the console, final memory map, framebuffer configuration, and ACPI
+RSDP through `boot_info_t` in `src/boot.h`. `boot_import_console()` restores the
+terminal cells and cursor, and `boot_import_memory()` initializes kernel-owned
+allocator state and mappings. The kernel switches to its own high-address stack
+before installing its final tables, which omit the loader and low image aliases.
+
+PMM-managed RAM and the allocator bitmap
 also have an HHDM at `HHDM_BASE + physical_address`. Loader/firmware memory is
 not implicitly part of that direct map.
 
@@ -19,6 +30,11 @@ Use `mem_phys_to_virt()` to access it from the CPU. `mem_free_page()` takes the
 physical address, never an HHDM pointer. `mem_get_free_page_count()` reports the
 current number of free pages; `mem_get_memory_size()` reports the usable RAM
 registered at boot, including the pages later reserved for the bitmap.
+
+`mem_kernel_to_phys()` converts a pointer within the contiguous high kernel
+image into its physical address, including the page-table root and static DMA
+buffers. `mem_phys_to_virt()` also resolves physical addresses within that image
+to their high kernel mapping once the final tables are active.
 
 Only UEFI conventional-memory descriptors from the successfully exited memory
 map are registered. The kernel, firmware tables, memory-map pool, and boot-services
@@ -125,7 +141,9 @@ string termination, prefix matching, decimal formatting, and keyboard releases.
 QEMU boots use 128 MiB/NVMe, 1 GiB/SATA, and 8 GiB/NVMe. Tests exercise all saved
 GPRs, RSP/segments/flags, an editable XMM snapshot, the existing ISR registry,
 real #UD/#GP/#PF frames and error codes, a live huge-page split, permission/TLB
-changes, kernel text write protection, kernel data NX, and FAT initialization.
+changes, high-address execution, preserved bootloader console text, reserved
+kernel memory, removal of low image aliases, kernel text write protection,
+kernel data NX, and FAT initialization.
 These are emulator checks, not physical-hardware or SMP validation.
 
 ## Review: major remaining issues
@@ -162,11 +180,11 @@ These are emulator checks, not physical-hardware or SMP validation.
    `src/cpu.c`, and `src/interrupts/interrupts.c`.
 
 4. **The framebuffer renderer assumes at least 1024 × 640 pixels.**
-   Smaller firmware graphics modes make its centered offsets negative and can
-   write outside the framebuffer. `efi_main()` does not select or reject such a
-   mode, nor validate stride/height against framebuffer size or pixel format.
-   Validate/select a supported mode before initializing the renderer, or make its
-   dimensions dynamic. Sources: `src/main.c`, `src/console_renderer.c:draw_chars`.
+   The bootloader now rejects smaller modes, unsupported pixel formats, and
+   invalid framebuffer dimensions before initializing the console. It does not
+   select a compatible mode automatically; supporting more displays still needs
+   mode selection or dynamic terminal dimensions.
+   Sources: `src/main.c`, `src/console_renderer.c:draw_chars`.
 
 5. **The memory and interrupt APIs are single-CPU boot infrastructure.**
    There are no PMM/page-table locks, remote TLB shootdowns, address-space lifecycle,
