@@ -48,6 +48,9 @@ void parse_fs_shell(char* input){
             con_write("FS: INVALLID PATH",0x01);
             fs_pos  = prev_fs_pos;
         }
+    }else if(str_start_comp(input,"cat ")){
+        uint64_t file_pos = fs_cd(fs_pos,(input+4));
+        fs_cat(file_pos);
     }else{
         con_write("FS: INVALLID COMMAND",0x01);
     }

@@ -43,7 +43,6 @@ static void put(char c, uint8_t color){
         cursor_x = 0;
         cursor_y++;
         autoscroll();
-        update_renderer();
         return;
     }
     if(c == '\b'){
@@ -51,7 +50,6 @@ static void put(char c, uint8_t color){
         cursor_x--;
         fixup_cursor();
         autoscroll();
-        update_renderer();
         return;
     }
     terminal[index] = (terminal_character){
@@ -61,7 +59,6 @@ static void put(char c, uint8_t color){
     cursor_x++;
     fixup_cursor();
     autoscroll();
-    update_renderer();
 }
 
 void con_clear(){
@@ -79,6 +76,7 @@ void con_write(char* string, uint8_t color){
         put(*string,color);
         ++string;
     }
+    update_renderer();
 }
 
 void con_delete_cell(){

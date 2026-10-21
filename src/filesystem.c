@@ -190,9 +190,13 @@ void read_file(
 ){
     uint64_t target = cluster;
     while(true){
-        con_write("Cluister: ",0x02);
-        print_uint64(target);
-        con_write("\n",0x07);
+        //con_write("Cluister: ",0x02);
+        //print_uint64(target);
+        //con_write("\n",0x07);
+        uint64_t lba = get_cluster_LBA(meta,target);
+        uint8_t* page = block_storage_read_block(0, lba);
+        con_write(page,0x07);
+        //con_write("\n",0x07);
         target = fat_next_cluster(meta,target);
         if(target >= 0x0FFFFFF8) break;
     }
@@ -206,6 +210,10 @@ uint64_t fs_cd(uint64_t cluster, char *name){
 
 void fs_ls(uint64_t cluster){
     list_files(&metadata,cluster);
+}
+
+void fs_cat(uint64_t cluster){
+    read_file(&metadata,cluster);
 }
 
 uint64_t fs_root(){
