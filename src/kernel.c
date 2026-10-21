@@ -28,7 +28,11 @@ void parse_kernel_shell(char* input){
     if(str_start_comp(input,"C_PF")){
         char* INVALLID_ADDR = (char*)0xFFFFFFFFFF;
         *INVALLID_ADDR=0;
-        con_write("CRASH",0x01);
+    }
+    if(str_start_comp(input,"C_DZ")){
+        int a = 0;
+        int b = 0;
+        int c = a/b;
     }
 }
 uint64_t fs_pos = 0;

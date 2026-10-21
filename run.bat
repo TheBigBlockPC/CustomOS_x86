@@ -2,8 +2,8 @@
 setlocal
 pushd "%~dp0" || exit /b 1
 
-::set "QEMU_DIR=C:\Program Files\qemu"
-set "QEMU_DIR=C:\Users\j.naumann\appdata\Local\Programs\qemu"
+set "QEMU_DIR=C:\Program Files\qemu"
+::set "QEMU_DIR=C:\Users\j.naumann\appdata\Local\Programs\qemu"
 set "QEMU_SYSTEM=%QEMU_DIR%\qemu-system-x86_64.exe"
 
 if not exist "%QEMU_SYSTEM%" (
