@@ -194,8 +194,17 @@ void read_file(
         //print_uint64(target);
         //con_write("\n",0x07);
         uint64_t lba = get_cluster_LBA(meta,target);
-        uint8_t* page = block_storage_read_block(0, lba);
-        con_write(page,0x07);
+        uint64_t data_LBAs = meta->sectors_per_cluster * (meta->bytes_per_sector / 512);
+        for(int i = 0;i<data_LBAs;i++){
+            con_write("reading sector",0x07);
+            uint8_t* page = block_storage_read_block(0, lba + i);
+            for(int byte=0;byte < meta->bytes_per_sector;byte++){
+                char seq[] = {page[byte],0};
+                con_write(seq,0x07);
+            }
+        }
+        //uint8_t* page = block_storage_read_block(0, lba);
+        //con_write(page,0x07);
         //con_write("\n",0x07);
         target = fat_next_cluster(meta,target);
         if(target >= 0x0FFFFFF8) break;
