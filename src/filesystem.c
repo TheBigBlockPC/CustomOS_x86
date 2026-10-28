@@ -45,6 +45,7 @@ typedef struct {
     uint8_t ext[3];
     uint8_t attr;
     uint32_t target_cluser;
+    uint32_t file_size;
 } FS_fd_t;
 
 FS_fd_t parse_entry(uint8_t* page, int index){
@@ -62,6 +63,7 @@ FS_fd_t parse_entry(uint8_t* page, int index){
     memory_copy(&fd.ext[0],&entry->ext[0],3);
     fd.attr = entry->attr;
     fd.target_cluser = destination_clustor;
+    fd.file_size = entry->size;
     return fd;
 }
 
@@ -91,6 +93,8 @@ void print_fd(FS_fd_t *fd){
     }
     con_write(" ",0x07);
     print_uint64(fd->target_cluser);
+    con_write(" ",0x07);
+    print_uint64(fd->file_size);
     con_write("\n",0x07);
 }
 
@@ -196,11 +200,13 @@ void read_file(
         uint64_t lba = get_cluster_LBA(meta,target);
         uint64_t data_LBAs = meta->sectors_per_cluster * (meta->bytes_per_sector / 512);
         for(int i = 0;i<data_LBAs;i++){
-            con_write("reading sector",0x07);
+            con_write("reading sector ",0x07);
+            print_uint64(i);
+            con_write("\n",0x07);
             uint8_t* page = block_storage_read_block(0, lba + i);
             for(int byte=0;byte < meta->bytes_per_sector;byte++){
                 char seq[] = {page[byte],0};
-                con_write(seq,0x07);
+                //con_write(seq,0x07);
             }
         }
         //uint8_t* page = block_storage_read_block(0, lba);
