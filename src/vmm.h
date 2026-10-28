@@ -7,4 +7,5 @@
 
 void vmm_init();
 void* vm_alloc(uint64_t size);
+void vm_free(void* addr);
 #endif
