@@ -1,6 +1,8 @@
 #include "paging.h"
 #include "memory.h"
 #include "panic.h"
+#include "util.h"
+#include "console.h"
 
 #define PAGE_TABLE_ADDR_MASK 0x000FFFFFFFFFF000ULL
 #define PAGE_2M_ADDR_MASK    0x000FFFFFFFE00000ULL
@@ -153,3 +155,57 @@ void set_mmu(void)
 }
 
 int get_mmu_active(void) { return mmu_active; }
+
+static inline uint64_t read_cr3(void) {
+    uint64_t cr3;
+    asm volatile("mov %%cr3, %0" : "=r"(cr3));
+    return cr3;
+}
+
+static inline uint64_t *phys_to_table(uint64_t phys) {
+    return (uint64_t *)(mem_phys_to_virt(phys));
+}
+
+bool virt_to_phys(uint64_t va, uint64_t *pa) {
+    // Check LA48 canonicality
+    uint64_t upper = va >> 48;
+    uint64_t sign = (va >> 47) & 1;
+
+    if (upper != (sign ? 0xFFFF : 0))
+        return false;
+
+    uint64_t indices[4] = {
+        (va >> 39) & 0x1FF,
+        (va >> 30) & 0x1FF,
+        (va >> 21) & 0x1FF,
+        (va >> 12) & 0x1FF
+    };
+
+    uint64_t table_phys = read_cr3() & PAGE_TABLE_ADDR_MASK;
+    for (int level = 0; level < 4; level++) {
+        
+        uint64_t *table = phys_to_table(table_phys);
+        uint64_t entry = table[indices[level]];
+
+        if (!(entry & PAGE_PRESENT))
+            return false;
+
+        // Huge pages: 1 GiB at PDPT, 2 MiB at PD
+        if ((level == 1 || level == 2) &&
+            (entry & PAGE_HUGE)) {
+
+            unsigned shift = (level == 1) ? 30 : 21;
+            uint64_t offset_mask = (1ULL << shift) - 1;
+
+            *pa = (entry & PAGE_TABLE_ADDR_MASK & ~offset_mask)
+                | (va & offset_mask);
+
+            return true;
+        }
+
+        table_phys = entry & PAGE_TABLE_ADDR_MASK;
+    }
+
+    *pa = table_phys | (va & 0xFFF);
+    return true;
+}

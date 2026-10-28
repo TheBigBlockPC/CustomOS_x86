@@ -14,7 +14,7 @@
 #define PAGE_DIRTY   (1ULL << 6)
 #define PAGE_PS      (1ULL << 7)
 #define PAGE_NX      (1ULL << 63)
-
+#define PAGE_HUGE PAGE_PS
 /* PRESENT/PS are supplied internally; flags=0 means supervisor, read-only,
  * executable. Changes invalidate translations on this CPU only. No SMP yet.
  * 4K mapping splits existing 2M leaves; 2M mapping never discards a 4K table. */
@@ -26,5 +26,5 @@ void identitymap_2m(uint64_t physical_addr, uint64_t flags);
 void mmu_identity_map_range(uint64_t address, uint64_t length, uint64_t flags);
 void set_mmu(void);
 int get_mmu_active(void);
-
+bool virt_to_phys(uint64_t va, uint64_t *pa);
 #endif

@@ -12,6 +12,7 @@
 #include "drivers/sata.h"
 #include "filesystem.h"
 #include "panic.h"
+#include "vmm.h"
 
 enum Mode {
     BASE,
@@ -83,6 +84,7 @@ void k_main(){
     setup_default_exceptionhanders();
     setup_hhdm();
     set_mmu();
+    vmm_init();
     init_acpi();
     pci_init();
 

@@ -67,6 +67,7 @@ void exception_dump(exception_frame_t *f)
         con_write("Fault Address: ", 0x07);
         print_uint64_full(f->cr2);
         con_write("\n", 0x07);
+        panic("exception");
     }
 
     con_write("\n---------------- CPU STATE ----------------\n", 0x07);

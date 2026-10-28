@@ -6,7 +6,7 @@
 #define PAGE_SIZE 4096ULL
 #define HHDM_BASE 0xffff800000000000ULL
 /* Leave the top 2 GiB of the upper canonical half for the kernel image. */
-#define HHDM_SIZE 0x00007fff80000000ULL
+#define HHDM_SIZE 0x0000400000000000ULL
 
 void mem_add_free_pages(uint64_t start, uint64_t page_count);
 uint64_t mem_get_memory_size(void);
