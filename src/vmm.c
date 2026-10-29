@@ -79,7 +79,7 @@ void* vm_alloc(uint64_t size){
     for(uint64_t i = 0;i<n_pages;i++){
         uint64_t page_phys = mem_alloc_page();
         uint64_t virt = (base+i) * PAGE_SIZE_4K + VM_BASE;
-        mmu_map_4k(virt,page_phys,PAGE_RW);
+        mmu_map_4k(virt,page_phys,PAGE_RW | PAGE_NX);
         bitmap_set(base+i,i==0);
     }
     return (void*)(base * PAGE_SIZE_4K + VM_BASE);
@@ -89,7 +89,7 @@ void* vm_alloc(uint64_t size){
 #define ALLOCATED 0b01
 
 bool end_free(uint64_t page){
-    if(page > total_virtual_pages){
+    if(page >= total_virtual_pages){
         return true;
     }
     uint8_t page_meta = bitmap_get(page);
