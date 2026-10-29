@@ -93,14 +93,14 @@ bool end_free(uint64_t page){
         return true;
     }
     uint8_t page_meta = bitmap_get(page);
-    if(!(page_meta & ALLOC_START) | (page_meta & ALLOC_START)){
+    if(!(page_meta & ALLOCATED) | (page_meta & ALLOC_START)){
         return true;
     }
     return false;
 }
 
 void vm_free(void* addr){
-    if(addr < VM_BASE || addr > VM_BASE + PAGE_SIZE_4K * PAGE_SIZE_4K){
+    if(addr < VM_BASE || addr > VM_BASE + total_virtual_pages * PAGE_SIZE_4K){
         panic("invallid adress");
     }
     uint64_t base = ((uint64_t)addr - VM_BASE) / PAGE_SIZE_4K;
@@ -120,6 +120,7 @@ void vm_free(void* addr){
             panic("invallid mapping");
         }
         mem_free_page(page_phys);
+        mmu_unmap_4k(virt);
         base++;
     } while(!end_free(base));
 }

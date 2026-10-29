@@ -27,4 +27,5 @@ void mmu_identity_map_range(uint64_t address, uint64_t length, uint64_t flags);
 void set_mmu(void);
 int get_mmu_active(void);
 bool virt_to_phys(uint64_t va, uint64_t *pa);
+void mmu_unmap_4k(uint64_t virtual_addr);
 #endif

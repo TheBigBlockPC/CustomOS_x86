@@ -90,6 +90,27 @@ void mmu_map_4k(uint64_t virtual_addr, uint64_t physical_addr, uint64_t flags)
     flush_page(virtual_addr);
 }
 
+void mmu_unmap_4k(uint64_t virtual_addr)
+{
+    page_table_t* pd = get_pd(virtual_addr, 0);
+    uint64_t* pde = &pd->entries[(virtual_addr >> 21) & 511];
+    if ((*pde & (PAGE_PRESENT | PAGE_PS)) == (PAGE_PRESENT | PAGE_PS)) {
+        uint64_t old = *pde;
+        uint64_t pt_phys = mem_alloc_page();
+        page_table_t* pt = table_at(pt_phys);
+        uint64_t inherited = old & (MAP_FLAGS | PAGE_ACCESSED | PAGE_DIRTY);
+        for (uint64_t i = 0; i < 512; i++)
+            pt->entries[i] = ((old & PAGE_2M_ADDR_MASK) + i * PAGE_SIZE_4K) |
+                             inherited | PAGE_PRESENT;
+        *pde = pt_phys | PAGE_PRESENT | PAGE_RW | (old & PAGE_USER);
+        /* INVLPG also invalidates the former large-page translation. */
+        flush_page(virtual_addr);
+    }
+    page_table_t* pt = next_table(pd, (virtual_addr >> 21) & 511, 0);
+    pt->entries[(virtual_addr >> 12) & 511] = 0;
+    flush_page(virtual_addr);
+}
+
 void mmu_map_2m(uint64_t virtual_addr, uint64_t physical_addr, uint64_t flags)
 {
     validate_mapping(virtual_addr, physical_addr, PAGE_SIZE_2M, flags);

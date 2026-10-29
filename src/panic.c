@@ -55,13 +55,13 @@ void exception_dump(exception_frame_t *f)
 
     con_write("\n================ CPU EXCEPTION ================\n", 0x07);
     con_write("Exception: ", 0x07);
-    print_uint64(f->vector);
-    con_write("\n", 0x07);
-    con_write("Error Code: ", 0x07);
-    con_write(crashes[f->error_code], 0x07);
+    con_write(crashes[f->vector], 0x07);
     con_write(" (", 0x07);
-    print_uint64_full(f->error_code);
+    print_uint64(f->vector);
     con_write(")\n", 0x07);
+    con_write("Error Code: ", 0x07);
+    print_uint64_full(f->error_code);
+    con_write("\n", 0x07);
 
     if (f->vector == 14) {
         con_write("Fault Address: ", 0x07);

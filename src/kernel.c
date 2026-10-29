@@ -92,7 +92,10 @@ void k_main(){
     fs_init();
 
     fs_pos = fs_root();
-
+    char* data = (char*)vm_alloc(65536);
+    *data = 0;
+    vm_free(data);
+    *data = 0;
     tty_init();
     tty_set_send_event(&on_input);
     tty_allow_input();
