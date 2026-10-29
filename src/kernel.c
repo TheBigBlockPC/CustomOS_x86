@@ -50,8 +50,7 @@ void parse_fs_shell(char* input){
             fs_pos  = prev_fs_pos;
         }
     }else if(str_start_comp(input,"cat ")){
-        uint64_t file_pos = fs_cd(fs_pos,(input+4));
-        fs_cat(file_pos);
+        fs_cat(fs_pos,(input+4));
     }else{
         con_write("FS: INVALLID COMMAND",0x01);
     }
@@ -90,12 +89,7 @@ void k_main(){
 
     block_storage_init();
     fs_init();
-
     fs_pos = fs_root();
-    char* data = (char*)vm_alloc(65536);
-    *data = 0;
-    vm_free(data);
-    *data = 0;
     tty_init();
     tty_set_send_event(&on_input);
     tty_allow_input();

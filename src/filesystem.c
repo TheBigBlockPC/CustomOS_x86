@@ -4,6 +4,7 @@
 #include "drivers/sata.h"
 #include "filesystem.h"
 #include "panic.h"
+#include "vmm.h"
 
 static uint16_t read_le16(const uint8_t *p)
 {
@@ -143,7 +144,7 @@ void list_files(
     }
 }
 
-uint64_t change_directory(
+FS_fd_t get_directory_desc(
     partition_dmetadata_t* meta,
     uint64_t cluster,
     char* name
@@ -153,7 +154,7 @@ uint64_t change_directory(
     char prepared_name[8];
     memory_set(&prepared_name[0],8,' ');
     for (int i = 0; name[i]; i++) {
-        if (i == 8) return 0; /* Short names only; never overwrite the stack. */
+        //if (i == 8) return; /* Short names only; never overwrite the stack. */
         prepared_name[i] = name[i];
     }
     for(int entry_index=0;entry_index<64;entry_index++){
@@ -167,10 +168,10 @@ uint64_t change_directory(
             }
         }
         if(matched){
-            return fd.target_cluser;
+            return fd;
         }
     }
-    return 0;
+    //return 0;
 }
 
 
@@ -190,9 +191,11 @@ uint32_t fat_next_cluster(
 
 void read_file(
     partition_dmetadata_t* meta,
-    uint64_t cluster
+    uint64_t cluster,
+    char* data
 ){
     uint64_t target = cluster;
+    uint64_t sector = 0;
     while(true){
         //con_write("Cluister: ",0x02);
         //print_uint64(target);
@@ -200,14 +203,14 @@ void read_file(
         uint64_t lba = get_cluster_LBA(meta,target);
         uint64_t data_LBAs = meta->sectors_per_cluster * (meta->bytes_per_sector / 512);
         for(int i = 0;i<data_LBAs;i++){
-            con_write("reading sector ",0x07);
-            print_uint64(i);
-            con_write("\n",0x07);
             uint8_t* page = block_storage_read_block(0, lba + i);
             for(int byte=0;byte < meta->bytes_per_sector;byte++){
-                char seq[] = {page[byte],0};
+                uint64_t byte_offset = sector * 512 + byte;
+                data[byte_offset] = page[byte];
+                //char seq[] = {page[byte],0};
                 //con_write(seq,0x07);
             }
+            sector++;
         }
         //uint8_t* page = block_storage_read_block(0, lba);
         //con_write(page,0x07);
@@ -220,15 +223,23 @@ void read_file(
 partition_dmetadata_t metadata;
 
 uint64_t fs_cd(uint64_t cluster, char *name){
-    return change_directory(&metadata,cluster,name);
+    FS_fd_t desc = get_directory_desc(&metadata,cluster,name);
+    return desc.target_cluser;
 }
 
 void fs_ls(uint64_t cluster){
     list_files(&metadata,cluster);
 }
 
-void fs_cat(uint64_t cluster){
-    read_file(&metadata,cluster);
+void fs_cat(uint64_t cluster, char *name){
+    con_write("reading: ",0x07);
+    con_write(name,0x07);
+    con_write("\n",0x07);
+    FS_fd_t desc = get_directory_desc(&metadata,cluster,name);
+    char* data = vm_alloc(desc.file_size+1);
+    read_file(&metadata,desc.target_cluser,data);
+    con_write(data,0x07);
+    vm_free(data);
 }
 
 uint64_t fs_root(){
