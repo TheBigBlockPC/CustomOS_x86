@@ -13,6 +13,7 @@
 #include "filesystem.h"
 #include "panic.h"
 #include "vmm.h"
+#include "hpet.h"
 
 enum Mode {
     BASE,
@@ -86,7 +87,7 @@ void k_main(){
     vmm_init();
     init_acpi();
     pci_init();
-
+    hpet_init();
     block_storage_init();
     fs_init();
     fs_pos = fs_root();
