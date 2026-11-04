@@ -14,6 +14,7 @@
 #include "panic.h"
 #include "vmm.h"
 #include "hpet.h"
+#include "syscall.h"
 
 enum Mode {
     BASE,
@@ -88,7 +89,10 @@ void k_main(){
     init_acpi();
     pci_init();
     hpet_init();
+
     block_storage_init();
+    syscall_init();
+
     fs_init();
     fs_pos = fs_root();
     tty_init();
@@ -97,6 +101,9 @@ void k_main(){
     tty_print("> ");
     uint64_t next_cursor_update = hpet_millis()+250;
     bool cursor_visible = false;
+    __asm__ volatile (
+        "syscall"
+    );
     while(1){
         poll_events();
         if(hpet_millis() > next_cursor_update){
