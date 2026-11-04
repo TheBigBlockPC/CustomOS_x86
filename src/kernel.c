@@ -95,8 +95,15 @@ void k_main(){
     tty_set_send_event(&on_input);
     tty_allow_input();
     tty_print("> ");
+    uint64_t next_cursor_update = hpet_millis()+250;
+    bool cursor_visible = false;
     while(1){
         poll_events();
+        if(hpet_millis() > next_cursor_update){
+            next_cursor_update = hpet_millis()+500;
+            cursor_visible = !cursor_visible;
+            set_draw_cursor(cursor_visible);
+        }
     }
     
     return;

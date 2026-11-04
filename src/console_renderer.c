@@ -32,6 +32,8 @@ static uint32_t colors[16] = {
 
 static uint16_t width;
 static uint16_t height;
+static uint16_t offset_x;
+static uint16_t offset_y;
 static uint32_t *fb;
 static void fill_rect(uint32_t *fb_base, int x, int y, int w, int h, uint32_t color){
     int start = x + y * width;
@@ -65,12 +67,41 @@ void set_FB(uint32_t *fb_base, uint16_t w, uint16_t h){
     width = w;
     height = h;
     fb = fb_base;
+    offset_x = (width - 64*16)/2;
+    offset_y = (height - 40*16)/2;
+}
+
+void draw_cursor(int x, int y){
+    int base = (x*16 + offset_x)+(y*16 + offset_y)*width;
+    for(int i=0;i<16;i++){
+        fb[base+i] = 0x00FFFFFF;
+        fb[base+i+15*width] = 0x00FFFFFF;
+        fb[base+i*width] = 0x00FFFFFF;
+        fb[base+i*width+15] = 0x00FFFFFF;
+    }
+}
+
+static bool cursor_visible = false;
+static terminal_character *viewport_ptr;
+void set_draw_cursor(bool draw){
+    cursor_visible = draw;
+
+    int x = prev_cursor_x;
+    int y = prev_cursor_y;
+    terminal_character tc = viewport_ptr[y*64+x];
+    uint8_t color = tc.color;
+    draw_glyph(fb,x*16+offset_x, y*16+offset_y,
+        tc.character,
+        colors[color & 0x0F],
+        colors[(color >> 4) & 0x0F]
+    );
+    if(draw){
+        draw_cursor(x,y);
+    }
 }
 
 void draw_chars(terminal_character *viewport, int cursor_x, int cursor_y){
-    int offset_x = (width - 64*16)/2;
-    int offset_y = (height - 40*16)/2;
-    
+    viewport_ptr = viewport;
     for(int y=0;y<40;y++){
         for(int x=0;x<64;x++){
             terminal_character current = terminal_current[y*64+x];
@@ -91,12 +122,8 @@ void draw_chars(terminal_character *viewport, int cursor_x, int cursor_y){
                 );
             }
             if(cursor_x == x && cursor_y == y){
-                int base = (x*16 + offset_x)+(y*16 + offset_y)*width;
-                for(int i=0;i<16;i++){
-                    fb[base+i] = 0x00FFFFFF;
-                    fb[base+i+15*width] = 0x00FFFFFF;
-                    fb[base+i*width] = 0x00FFFFFF;
-                    fb[base+i*width+15] = 0x00FFFFFF;
+                if(cursor_visible){
+                    draw_cursor(x,y);
                 }
             }
         }
