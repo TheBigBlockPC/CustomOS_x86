@@ -1,5 +1,6 @@
 #include "types.h"
 #include "cpu.h"
+#include "tss.h"
 
 #define KERNEL_STACK_SIZE (64 * 1024)
 
@@ -61,6 +62,6 @@ void cpu_enter_kernel(kernel_entry_t entry)
         kernel_stack + sizeof(kernel_stack);
 
     cpu_switch_stack(stack_top, entry);
-
+    tss_init((uint64_t)stack_top);
     __builtin_unreachable();
 }

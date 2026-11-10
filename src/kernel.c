@@ -15,7 +15,8 @@
 #include "vmm.h"
 #include "hpet.h"
 #include "syscall.h"
-
+#include "tss.h"
+#include "usermode.h"
 enum Mode {
     BASE,
     FILESYSTEM
@@ -81,6 +82,8 @@ void on_input(char* input){
 void k_main(){
     con_write("kernel running\n",0x07);
     gdt_init();
+    gdt_set_tss();
+    tss_load();
     interrupts_init();
     setup_default_exceptionhanders();
     setup_hhdm();
@@ -101,9 +104,11 @@ void k_main(){
     tty_print("> ");
     uint64_t next_cursor_update = hpet_millis()+250;
     bool cursor_visible = false;
-    __asm__ volatile (
+    /*__asm__ volatile (
         "syscall"
-    );
+    );*/
+
+    um_test();
     while(1){
         poll_events();
         if(hpet_millis() > next_cursor_update){
