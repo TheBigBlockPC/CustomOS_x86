@@ -60,8 +60,8 @@ void cpu_enter_kernel(kernel_entry_t entry)
 {
     void *stack_top =
         kernel_stack + sizeof(kernel_stack);
+    tss_init((uint64_t)stack_top);
 
     cpu_switch_stack(stack_top, entry);
-    tss_init((uint64_t)stack_top);
     __builtin_unreachable();
 }

@@ -38,7 +38,15 @@ clang "${flags[@]}" \
   src/pcie.c \
   src/drivers/nvme.c \
   src/drivers/sata.c \
-  src/filesystem.c
+  src/filesystem.c \
+  src/vmm.c \
+  src/tss.c \
+  src/hpet.c \
+  src/syscall.c \
+  src/usermode.c \
+  src/user_enter.S \
+  src/user_pgrgram.S \
+  src/syscall_entry.S
 
 mkdir -p test_env/EFI/BOOT
 cp bootx64.efi kernel.exe test_env/EFI/BOOT/

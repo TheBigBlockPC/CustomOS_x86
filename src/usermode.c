@@ -3,6 +3,7 @@
 #include "paging.h"
 #include "util.h"
 #include "usermode.h"
+#include "console.h"
 #define USER_CODE_VA  0x400000ULL
 #define USER_STACK_VA 0x800000ULL
 
@@ -29,13 +30,20 @@ extern void enter_user(
     uint64_t user_rsp
 );
 
+extern const uint8_t user_program_start[];
+extern const uint8_t user_program_end[];
+
 void um_test(){
-    uint8_t* user_code = (uint8_t*)usr_allocate_kernel(PAGE_SIZE_4K,USER_CODE_VA);
+    uint64_t code_size =
+        (uint64_t)user_program_end -
+        (uint64_t)user_program_start;
+
+    uint8_t* user_code = (uint8_t*)usr_allocate_kernel(code_size,USER_CODE_VA);
     uint8_t* user_stack = (uint8_t*)usr_allocate_kernel(PAGE_SIZE_4K,USER_STACK_VA);
+    con_write("writing data\n",0x07);
+    memory_copy(user_code,user_program_start,code_size);
 
-    user_code[0] = 0x0F;
-    user_code[1] = 0x0B;
-
+    con_write("running user code\n",0x03);
     enter_user(
         USER_CODE_VA,
         USER_STACK_VA + PAGE_SIZE_4K
