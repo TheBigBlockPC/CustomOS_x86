@@ -192,7 +192,8 @@ uint32_t fat_next_cluster(
 void read_file(
     partition_dmetadata_t* meta,
     uint64_t cluster,
-    char* data
+    char* data,
+    uint64_t file_size
 ){
     uint64_t target = cluster;
     uint64_t sector = 0;
@@ -206,6 +207,7 @@ void read_file(
             uint8_t* page = block_storage_read_block(0, lba + i);
             for(int byte=0;byte < meta->bytes_per_sector;byte++){
                 uint64_t byte_offset = sector * 512 + byte;
+                if(byte_offset>=file_size) return;
                 data[byte_offset] = page[byte];
                 //char seq[] = {page[byte],0};
                 //con_write(seq,0x07);
@@ -237,7 +239,7 @@ void fs_cat(uint64_t cluster, char *name){
     con_write("\n",0x07);
     FS_fd_t desc = get_directory_desc(&metadata,cluster,name);
     char* data = vm_alloc(desc.file_size+1);
-    read_file(&metadata,desc.target_cluser,data);
+    read_file(&metadata,desc.target_cluser,data,desc.file_size);
     con_write(data,0x07);
     vm_free(data);
 }

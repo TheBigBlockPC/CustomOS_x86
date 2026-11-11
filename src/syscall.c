@@ -124,7 +124,9 @@ uint64_t syscall_dispatch(
 
         case SYS_ADD:
             return sys_add(arg0, arg1);
-
+        case SYS_EXIT:
+            return (uint64_t)-1;
+            //reserved
         default:
             return (uint64_t)-1;
     }

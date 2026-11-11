@@ -7,7 +7,7 @@
 #define USER_CODE_VA  0x400000ULL
 #define USER_STACK_VA 0x800000ULL
 
-void* usr_allocate_kernel(uint64_t size,uint64_t usr_base){
+void* usr_allocate_kernel(uint64_t size,uint64_t usr_base,uint64_t flags){
     uint64_t n_pages = int_div_round_up(size,PAGE_SIZE_4K);
     void* buffer = vm_alloc(size);
     for(uint64_t i=0;i<n_pages;i++){
@@ -15,10 +15,16 @@ void* usr_allocate_kernel(uint64_t size,uint64_t usr_base){
         uint64_t phys = 0;
         uint64_t va = ((uint64_t)buffer) + offset;
         virt_to_phys(va,&phys);
-        mmu_map_4k(usr_base+offset,phys,PAGE_RW | PAGE_USER);
+        mmu_map_4k(usr_base+offset,phys,flags);
     }
     return buffer;
     //mmu_map_4k();
+}
+void unmap_range(uint64_t base, uint64_t n_bytes){
+    uint64_t n_pages = int_div_round_up(n_bytes,PAGE_SIZE_4K);
+    for(uint64_t i=0;i<n_pages;i++){
+        mmu_unmap_4k(base+i*PAGE_SIZE_4K);
+    }
 }
 
 #define USER_CS 0x1B
@@ -40,8 +46,8 @@ void um_test(){
         (uint64_t)user_program_end -
         (uint64_t)user_program_start;
 
-    uint8_t* user_code = (uint8_t*)usr_allocate_kernel(code_size,USER_CODE_VA);
-    uint8_t* user_stack = (uint8_t*)usr_allocate_kernel(PAGE_SIZE_4K,USER_STACK_VA);
+    uint8_t* user_code = (uint8_t*)usr_allocate_kernel(code_size,USER_CODE_VA,PAGE_RW | PAGE_USER);
+    uint8_t* user_stack = (uint8_t*)usr_allocate_kernel(PAGE_SIZE_4K,USER_STACK_VA,PAGE_RW | PAGE_USER | PAGE_NX);
     con_write("writing data\n",0x07);
     memory_copy(user_code,user_program_start,code_size);
 
@@ -50,4 +56,9 @@ void um_test(){
         USER_CODE_VA,
         USER_STACK_VA + PAGE_SIZE_4K
     );
+
+    unmap_range(USER_CODE_VA,code_size);
+    unmap_range(USER_STACK_VA,PAGE_SIZE_4K);
+    vm_free(user_code);
+    vm_free(user_stack);
 }
