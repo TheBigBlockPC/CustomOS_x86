@@ -3,6 +3,7 @@
 
 #define SYS_WRITE 1
 #define SYS_ADD   2
+#define SYS_EXIT 3
 
 #define SYSCALL_STACK_SIZE (16 * 1024)
 
@@ -118,7 +119,6 @@ uint64_t syscall_dispatch(
     uint64_t arg1
 ) {
     switch (number) {
-
         case SYS_WRITE:
             return sys_write(arg0, arg1);
 

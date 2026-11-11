@@ -38,6 +38,9 @@ void parse_kernel_shell(char* input){
         int b = 0;
         int c = a/b;
     }
+    if(str_start_comp(input,"EXEC")){
+        um_test();
+    }
 }
 uint64_t fs_pos = 0;
 void parse_fs_shell(char* input){
@@ -98,6 +101,7 @@ void k_main(){
 
     fs_init();
     fs_pos = fs_root();
+
     tty_init();
     tty_set_send_event(&on_input);
     tty_allow_input();
@@ -108,7 +112,6 @@ void k_main(){
         "syscall"
     );*/
 
-    um_test();
     while(1){
         poll_events();
         if(hpet_millis() > next_cursor_update){

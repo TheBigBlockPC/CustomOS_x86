@@ -24,14 +24,16 @@ void* usr_allocate_kernel(uint64_t size,uint64_t usr_base){
 #define USER_CS 0x1B
 #define USER_DS 0x23
 
-__attribute__((noreturn))
 extern void enter_user(
     uint64_t user_rip,
     uint64_t user_rsp
 );
 
+extern void resume_kernel();
+
 extern const uint8_t user_program_start[];
 extern const uint8_t user_program_end[];
+uint64_t kernel_saved_rsp = 0;
 
 void um_test(){
     uint64_t code_size =

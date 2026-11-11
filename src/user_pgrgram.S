@@ -56,10 +56,11 @@ user_program_start:
     mov r14, rax
 
     # ====================================
-    # Breakpoint for debugging
+    # exit the program
     # ====================================
 
-    int3
+    mov rax, 3
+    syscall
 
 hang:
     jmp hang
