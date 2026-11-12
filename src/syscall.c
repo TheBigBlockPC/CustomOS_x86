@@ -1,5 +1,6 @@
 #include "types.h"
 #include "console.h"
+#include "util.h"
 
 #define SYS_WRITE 1
 #define SYS_ADD   2
@@ -8,7 +9,7 @@
 #define SYSCALL_STACK_SIZE (16 * 1024)
 
 #define USER_CODE_BASE 0x400000ULL
-#define USER_CODE_SIZE 0x1000ULL
+#define USER_CODE_SIZE 0x80000000ULL
 
 // ============================================
 // Kernel syscall stack
@@ -128,6 +129,7 @@ uint64_t syscall_dispatch(
             return (uint64_t)-1;
             //reserved
         default:
+            con_write("Invallid SYSCALL\n",0x01);
             return (uint64_t)-1;
     }
 }

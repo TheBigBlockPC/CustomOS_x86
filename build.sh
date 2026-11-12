@@ -55,4 +55,18 @@ clang --target=x86_64-unknown-linux-gnu -DSYS_EXIT=3 \
   -fuse-ld=lld -nostdlib -static -Wl,-e,_start -Wl,-Ttext=0x400000 \
   src/programs/hello_world.S -o test_env/HELLO.elf
 
+clang --target=x86_64-unknown-linux-gnu \
+    -ffreestanding \
+    -fno-stack-protector \
+    -fno-pic \
+    -fno-pie \
+    -mno-red-zone \
+    -nostdlib \
+    -static \
+    -no-pie \
+    -fuse-ld=lld \
+    -Wl,-e,_start \
+    -Wl,-Ttext=0x400000 \
+    src/programs/crt0.S src/programs/hello.c \
+    -o test_env/C_HELLO.elf
 cp bootx64.efi kernel.exe test_env/EFI/BOOT/
