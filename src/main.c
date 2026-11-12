@@ -208,7 +208,7 @@ efi_status_t efi_main(efi_handle_t handle, efi_system_table_t* system)
     }
     efi_gop_mode_info_t* mode = gop->Mode->Information;
     if (!gop->Mode->FrameBufferBase || mode->PixelFormat > PixelBlueGreenRedReserved8BitPerColor ||
-        mode->HorizontalResolution < 1024 || mode->VerticalResolution < 640 ||
+        //mode->HorizontalResolution < 1024 || mode->VerticalResolution < 640 ||
         mode->PixelsPerScanLine < mode->HorizontalResolution || mode->PixelsPerScanLine > 65535 ||
         mode->VerticalResolution > 65535 ||
         (uint64_t)mode->PixelsPerScanLine * mode->VerticalResolution * 4 > gop->Mode->FrameBufferSize){
