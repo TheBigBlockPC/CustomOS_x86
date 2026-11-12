@@ -201,14 +201,21 @@ efi_status_t efi_main(efi_handle_t handle, efi_system_table_t* system)
     efi_boot_services_t* bs = system->BootServices;
     efi_gop_t* gop;
     efi_status_t status = bs->LocateProtocol(&gop_guid, NULL, (void**)&gop);
-    if (EFI_ERROR(status) || !gop || !gop->Mode || !gop->Mode->Information) return EFI_UNSUPPORTED;
+    if (EFI_ERROR(status) || !gop || !gop->Mode || !gop->Mode->Information){
+        system->ConOut->OutputString(system->ConOut, L"GOP not supported");
+        while (true){}
+        //return EFI_UNSUPPORTED;
+    }
     efi_gop_mode_info_t* mode = gop->Mode->Information;
     if (!gop->Mode->FrameBufferBase || mode->PixelFormat > PixelBlueGreenRedReserved8BitPerColor ||
         mode->HorizontalResolution < 1024 || mode->VerticalResolution < 640 ||
         mode->PixelsPerScanLine < mode->HorizontalResolution || mode->PixelsPerScanLine > 65535 ||
         mode->VerticalResolution > 65535 ||
-        (uint64_t)mode->PixelsPerScanLine * mode->VerticalResolution * 4 > gop->Mode->FrameBufferSize)
-        return EFI_UNSUPPORTED;
+        (uint64_t)mode->PixelsPerScanLine * mode->VerticalResolution * 4 > gop->Mode->FrameBufferSize){
+        system->ConOut->OutputString(system->ConOut, L"Unsupported graphics mode");
+        while (true){}
+        //return EFI_UNSUPPORTED;
+    }
     boot_info.version = BOOT_INFO_VERSION;
     boot_info.framebuffer = (void*)gop->Mode->FrameBufferBase;
     boot_info.framebuffer_size = gop->Mode->FrameBufferSize;
