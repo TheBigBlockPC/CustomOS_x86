@@ -57,6 +57,8 @@ void parse_fs_shell(char* input){
         }
     }else if(str_start_comp(input,"cat ")){
         fs_cat(fs_pos,(input+4));
+    }else if(str_start_comp(input,"exec ")){
+        fs_exec(fs_pos,(input+5));
     }else{
         con_write("FS: INVALLID COMMAND",0x01);
     }

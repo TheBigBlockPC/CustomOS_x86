@@ -6,4 +6,5 @@ uint64_t fs_cd(uint64_t cluster, char *name);
 void fs_ls(uint64_t cluster);
 uint64_t fs_root();
 void fs_cat(uint64_t cluster,char* name);
+void fs_exec(int64_t cluster, char *name);
 #endif

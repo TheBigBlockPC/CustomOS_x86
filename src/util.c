@@ -49,6 +49,12 @@ bool str_start_comp(char* a, char* b){
         i++;
     }
 }
+bool byte_comp(char* a, char* b,uint64_t length){
+    for(uint64_t i=0;i<length;i++){
+        if(a[i] != b[i]) return false;
+    }
+    return true;
+}
 
 uint64_t int_div_round_up(uint64_t a, uint64_t b){
     return a / b + (a % b != 0);
