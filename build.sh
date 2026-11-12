@@ -40,13 +40,19 @@ clang "${flags[@]}" \
   src/drivers/sata.c \
   src/filesystem.c \
   src/vmm.c \
-  src/tss.c \
   src/hpet.c \
   src/syscall.c \
+  src/tss.c \
   src/usermode.c \
   src/user_enter.S \
+  src/syscall_entry.S \
   src/user_pgrgram.S \
-  src/syscall_entry.S
+  src/elf64.c
 
 mkdir -p test_env/EFI/BOOT
+
+clang --target=x86_64-unknown-linux-gnu -DSYS_EXIT=3 \
+  -fuse-ld=lld -nostdlib -static -Wl,-e,_start -Wl,-Ttext=0x400000 \
+  src/programs/hello_world.S -o test_env/HELLO.elf
+
 cp bootx64.efi kernel.exe test_env/EFI/BOOT/

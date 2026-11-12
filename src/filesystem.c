@@ -252,7 +252,7 @@ void fs_exec(int64_t cluster, char *name){
     FS_fd_t desc = get_directory_desc(&metadata,cluster,name);
     char* data = vm_alloc(desc.file_size+1);
     read_file(&metadata,desc.target_cluser,data,desc.file_size);
-    parse_ELF(data);
+    parse_ELF(data,desc.file_size);
     vm_free(data);
 }
 

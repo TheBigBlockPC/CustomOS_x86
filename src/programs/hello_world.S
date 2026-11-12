@@ -38,5 +38,5 @@ _start:
 
 
 message:
-    .ascii "Hello from Ring 3!\n"
+    .ascii "hello from ELF file\n"
 message_end:

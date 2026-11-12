@@ -5,7 +5,7 @@
 #include "usermode.h"
 #include "console.h"
 #define USER_CODE_VA  0x400000ULL
-#define USER_STACK_VA 0x800000ULL
+#define USER_STACK_VA 0x3200000ULL
 
 typedef struct {
     uint64_t user_va;
@@ -34,9 +34,9 @@ void unmap_range(uint64_t base, uint64_t n_bytes){
     }
 }
 
-void um_create_segment(uint64_t user_base, void* data, uint64_t size, uint64_t flags){
-    void* memory = usr_allocate_kernel(size,user_base,flags);
-    memory_copy(memory,data,size);
+void um_create_segment(uint64_t user_base, void* data, uint64_t size, uint64_t flags, uint64_t padding){
+    void* memory = usr_allocate_kernel(size+padding,user_base,flags);
+    memory_copy(memory+padding,data,size);
 
     allocations[alloc_index].kernel_va = memory;
     allocations[alloc_index].user_va = user_base;
@@ -82,7 +82,7 @@ void um_test(){
         (uint64_t)user_program_end -
         (uint64_t)user_program_start;
 
-    um_create_segment(USER_CODE_VA,user_program_start,code_size, PAGE_USER);
+    um_create_segment(USER_CODE_VA,user_program_start,code_size, PAGE_USER,0);
     con_write("running user code\n",0x03);
     um_eexecute(USER_CODE_VA);
 }
