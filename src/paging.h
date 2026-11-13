@@ -14,6 +14,9 @@
 #define PAGE_DIRTY   (1ULL << 6)
 #define PAGE_PS      (1ULL << 7)
 #define PAGE_NX      (1ULL << 63)
+#define PAGE_WC PAGE_PWT
+#define PAGE_UC (PAGE_PCD | PAGE_PWT)
+#define PAGE_WB 0ULL
 #define PAGE_HUGE PAGE_PS
 /* PRESENT/PS are supplied internally; flags=0 means supervisor, read-only,
  * executable. Changes invalidate translations on this CPU only. No SMP yet.

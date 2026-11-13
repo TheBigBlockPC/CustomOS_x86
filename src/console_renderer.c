@@ -2,6 +2,7 @@
 //#include "font8x8_basic.h"
 #include "font8x8_256.h"
 #include "console_renderer.h"
+#include "display_mgr.h"
 
 #define TERMINAL_W 64
 #define TERMINAL_H 40
@@ -70,7 +71,7 @@ static void draw_glyph(uint32_t *fb_base, int x, int y, char glyph, uint32_t fg_
     }
 }
 
-void set_FB(uint32_t *fb_base, uint16_t w, uint16_t h){
+void cr_set_FB(uint32_t *fb_base, uint16_t w, uint16_t h){
     
     if(w < (16*64) || h < (16*40)){
         set_fontsize(1);
@@ -111,6 +112,7 @@ void set_draw_cursor(bool draw){
     if(draw){
         draw_cursor(x,y);
     }
+    present();
 }
 
 void draw_chars(terminal_character *viewport, int cursor_x, int cursor_y){
@@ -144,12 +146,5 @@ void draw_chars(terminal_character *viewport, int cursor_x, int cursor_y){
 
     prev_cursor_x = cursor_x;
     prev_cursor_y = cursor_y;
-}
-
-fb_t get_fb(){
-    fb_t fb_desc;
-    fb_desc.w = width;
-    fb_desc.h = height;
-    fb_desc.fb = &fb[0];
-    return fb_desc;
+    present();
 }

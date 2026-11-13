@@ -3,6 +3,7 @@
 #include "paging.h"
 #include "util.h"
 #include "panic.h"
+#include "display_mgr.h"
 
 static efi_guid_t gop_guid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
 static efi_guid_t image_guid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
@@ -222,7 +223,7 @@ efi_status_t efi_main(efi_handle_t handle, efi_system_table_t* system)
     boot_info.framebuffer_stride = mode->PixelsPerScanLine;
     boot_info.framebuffer_height = mode->VerticalResolution;
     memory_zero(boot_info.framebuffer, boot_info.framebuffer_size);
-    set_FB(boot_info.framebuffer, boot_info.framebuffer_stride, boot_info.framebuffer_height);
+    dp_set_FB(boot_info.framebuffer, boot_info.framebuffer_stride, boot_info.framebuffer_height);
     con_clear();
     con_write("Console Subsystem Initialized\nLoading kernel.exe...\n", 0x07);
     efi_loaded_image_protocol_t* image;

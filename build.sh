@@ -12,12 +12,13 @@ flags=(
 clang "${flags[@]}" \
   -Wl,-entry:efi_main -Wl,-subsystem:efi_application \
   -o bootx64.efi \
-  src/main.c src/console_renderer.c src/console.c src/util.c
+  src/main.c src/console_renderer.c src/console.c src/util.c src/display_mgr.c
 
 clang "${flags[@]}" \
   -Wl,-entry:kernel_entry -Wl,-subsystem:native \
   -Wl,-base:0xffffffff80000000 -Wl,-fixed -Wl,-dynamicbase:no \
   -o kernel.exe \
+  -DBUILD_KERNEL \
   src/boot.c \
   src/console_renderer.c \
   src/console.c \
@@ -47,7 +48,8 @@ clang "${flags[@]}" \
   src/user_enter.S \
   src/syscall_entry.S \
   src/user_pgrgram.S \
-  src/elf64.c
+  src/elf64.c \
+  src/display_mgr.c
 
 mkdir -p test_env/EFI/BOOT
 

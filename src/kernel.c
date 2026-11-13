@@ -17,6 +17,7 @@
 #include "syscall.h"
 #include "tss.h"
 #include "usermode.h"
+#include "display_mgr.h"
 enum Mode {
     BASE,
     FILESYSTEM
@@ -86,18 +87,24 @@ void on_input(char* input){
 
 void k_main(){
     con_write("kernel running\n",0x07);
+
     gdt_init();
     gdt_set_tss();
     tss_load();
+
     interrupts_init();
+
     setup_default_exceptionhanders();
     setup_hhdm();
+
     set_mmu();
     vmm_init();
+
     init_acpi();
     pci_init();
     hpet_init();
 
+    setup_double_buffer();
     block_storage_init();
     syscall_init();
 
@@ -107,6 +114,13 @@ void k_main(){
     tty_init();
     tty_set_send_event(&on_input);
     tty_allow_input();
+
+    uint64_t start = hpet_millis();
+    present();
+    uint64_t end = hpet_millis();
+    con_write("Present call transfer: ",0x02);
+    print_uint64_dec(end-start);
+    con_write("ms\n",0x02);
     tty_print("> ");
     uint64_t next_cursor_update = hpet_millis()+250;
     bool cursor_visible = false;

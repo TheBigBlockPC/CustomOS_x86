@@ -1,14 +1,15 @@
 #include "types.h"
 #include "console.h"
 #include "util.h"
-#include "console_renderer.h"
+#include "display_mgr.h"
 #include "usermode.h"
 #include "paging.h"
 
-#define SYS_WRITE 1
-#define SYS_ADD   2
-#define SYS_EXIT  3
-#define SYS_GFX   4
+#define SYS_WRITE   1
+#define SYS_ADD     2
+#define SYS_EXIT    3
+#define SYS_GFX     4
+#define SYS_PRESENT 5
 
 #define SYSCALL_STACK_SIZE (16 * 1024)
 
@@ -158,6 +159,9 @@ uint64_t syscall_dispatch(
             //reserved
         case SYS_GFX:
             return sys_gfx(arg0);
+        case SYS_PRESENT:
+            present();
+            return 0;
         default:
             con_write("Invallid SYSCALL\n",0x01);
             return (uint64_t)-1;

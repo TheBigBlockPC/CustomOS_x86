@@ -3,10 +3,11 @@
 
 #include <stdint.h>
 
-#define SYS_WRITE 1
-#define SYS_ADD   2
-#define SYS_EXIT  3
-#define SYS_GFX   4
+#define SYS_WRITE   1
+#define SYS_ADD     2
+#define SYS_EXIT    3
+#define SYS_GFX     4
+#define SYS_PRESENT 5
 
 static inline uint64_t syscall2(
     uint64_t number,
@@ -57,6 +58,14 @@ static inline void sys_gfx(
     syscall2(
         SYS_GFX,
         (uint64_t)fb_desc,
+        0
+    );
+}
+static inline void sys_present(
+) {
+    syscall2(
+        SYS_PRESENT,
+        0,
         0
     );
 }

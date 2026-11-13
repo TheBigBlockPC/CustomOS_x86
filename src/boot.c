@@ -6,10 +6,11 @@
 #include "acpi.h"
 #include "cpu.h"
 #include "kernel.h"
+#include "display_mgr.h"
 
 void boot_import_console(const boot_info_t* info)
 {
-    set_FB(info->framebuffer, info->framebuffer_stride, info->framebuffer_height);
+    dp_set_FB(info->framebuffer, info->framebuffer_stride, info->framebuffer_height);
     con_import_state(&info->console);
 }
 
@@ -32,7 +33,7 @@ void boot_import_memory(const boot_info_t* info)
                        info->kernel_physical + section->offset + offset, section->flags);
     }
     mmu_identity_map_range((uint64_t)info->framebuffer, info->framebuffer_size,
-                           PAGE_RW | PAGE_NX | PAGE_PCD | PAGE_PWT);
+                           PAGE_RW | PAGE_NX | PAGE_WC);
 }
 
 __attribute__((noreturn)) void kernel_entry(const boot_info_t* info)
