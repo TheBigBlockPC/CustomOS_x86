@@ -145,3 +145,11 @@ void draw_chars(terminal_character *viewport, int cursor_x, int cursor_y){
     prev_cursor_x = cursor_x;
     prev_cursor_y = cursor_y;
 }
+
+fb_t get_fb(){
+    fb_t fb_desc;
+    fb_desc.w = width;
+    fb_desc.h = height;
+    fb_desc.fb = &fb[0];
+    return fb_desc;
+}

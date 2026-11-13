@@ -44,9 +44,24 @@ void um_create_segment(uint64_t user_base, void* data, uint64_t size, uint64_t f
     alloc_index++;
 }
 
+void um_mmap(uint64_t user_base, void* data, uint64_t size, uint64_t flags){
+    uint64_t n_pages = int_div_round_up(size,PAGE_SIZE_4K);
+    for(uint64_t i=0;i<n_pages;i++){
+        uint64_t offset = i * PAGE_SIZE_4K;
+        uint64_t phys = 0;
+        uint64_t va = ((uint64_t)data) + offset;
+        virt_to_phys(va,&phys);
+        mmu_map_4k(user_base+offset,phys,flags);
+    }
+    allocations[alloc_index].kernel_va = 0;
+    allocations[alloc_index].user_va = user_base;
+    allocations[alloc_index].size = size;
+    alloc_index++;
+}
+
 void um_dealloc(){
     for(int i=0;i<alloc_index;i++){
-        vm_free(allocations[i].kernel_va);
+        if(allocations[i].kernel_va != 0) vm_free(allocations[i].kernel_va);
         unmap_range(allocations[i].user_va,allocations[i].size);
     }
     alloc_index = 0;

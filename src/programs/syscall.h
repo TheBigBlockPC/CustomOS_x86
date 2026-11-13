@@ -6,6 +6,7 @@
 #define SYS_WRITE 1
 #define SYS_ADD   2
 #define SYS_EXIT  3
+#define SYS_GFX   4
 
 static inline uint64_t syscall2(
     uint64_t number,
@@ -44,4 +45,19 @@ static inline void sys_write(
     );
 }
 
+typedef struct {
+    uint16_t w;
+    uint16_t h;
+    uint32_t* fb;
+} fb_t;
+
+static inline void sys_gfx(
+    fb_t* fb_desc
+) {
+    syscall2(
+        SYS_GFX,
+        (uint64_t)fb_desc,
+        0
+    );
+}
 #endif

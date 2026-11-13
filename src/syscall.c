@@ -1,16 +1,23 @@
 #include "types.h"
 #include "console.h"
 #include "util.h"
+#include "console_renderer.h"
+#include "usermode.h"
+#include "paging.h"
 
 #define SYS_WRITE 1
 #define SYS_ADD   2
-#define SYS_EXIT 3
+#define SYS_EXIT  3
+#define SYS_GFX   4
 
 #define SYSCALL_STACK_SIZE (16 * 1024)
 
 #define USER_CODE_BASE 0x400000ULL
-#define USER_CODE_SIZE 0x80000000ULL
+//#define USER_CODE_SIZE 0x80000000ULL
+#define USER_LIMIT 0x0000800000000000ULL
+#define USER_CODE_SIZE (USER_LIMIT-USER_CODE_BASE)
 
+#define USER_FB_VA 0x0000000010000000ULL
 // ============================================
 // Kernel syscall stack
 // ============================================
@@ -111,6 +118,27 @@ static uint64_t sys_add(
 }
 
 // ============================================
+// SYS_GFX
+// ============================================
+
+static uint64_t sys_gfx(
+    uint64_t fb_desc_ptr
+) {
+    if (!valid_user_buffer(fb_desc_ptr, sizeof(fb_desc_ptr)))
+        return (uint64_t)-1;
+    fb_t* fb_desc = (fb_t*)fb_desc_ptr;
+
+    fb_t fb = get_fb();
+    uint16_t w = fb.w;
+    uint16_t h = fb.h;
+    fb_desc->w = w;
+    fb_desc->h = h;
+    fb_desc->fb = (uint32_t*)USER_FB_VA;
+    um_mmap(USER_FB_VA,(void*)(fb.fb), w * h * 4, PAGE_RW | PAGE_NX | PAGE_USER);
+    return 0;
+}
+
+// ============================================
 // Syscall dispatcher
 // ============================================
 
@@ -128,6 +156,8 @@ uint64_t syscall_dispatch(
         case SYS_EXIT:
             return (uint64_t)-1;
             //reserved
+        case SYS_GFX:
+            return sys_gfx(arg0);
         default:
             con_write("Invallid SYSCALL\n",0x01);
             return (uint64_t)-1;

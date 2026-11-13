@@ -4,4 +4,5 @@ void um_create_segment(uint64_t user_base, void* data, uint64_t size, uint64_t f
 void um_eexecute(uint64_t entry);
 void um_dealloc();
 void um_test();
+void um_mmap(uint64_t user_base, void* data, uint64_t size, uint64_t flags);
 #endif
