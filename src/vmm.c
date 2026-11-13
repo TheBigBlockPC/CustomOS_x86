@@ -100,7 +100,7 @@ bool end_free(uint64_t page){
 }
 
 void vm_free(void* addr){
-    if(addr < VM_BASE || addr > VM_BASE + total_virtual_pages * PAGE_SIZE_4K){
+    if((uint64_t)addr < VM_BASE || (uint64_t)addr > VM_BASE + total_virtual_pages * PAGE_SIZE_4K){
         panic("invallid adress");
     }
     uint64_t base = ((uint64_t)addr - VM_BASE) / PAGE_SIZE_4K;

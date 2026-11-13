@@ -14,6 +14,8 @@ if errorlevel 1 goto fail
 "%CLANG%" --target=x86_64-unknown-linux-gnu -DSYS_EXIT=3 -fuse-ld=lld -nostdlib -static -Wl,-e,_start -Wl,-Ttext=0x400000 src/programs/hello_world.S -o test_env\HELLO.elf
 if errorlevel 1 goto fail
 
+"%CLANG%" --target=x86_64-unknown-linux-gnu -DSYS_EXIT=3 -fuse-ld=lld -nostdlib -static -Wl,-e,_start -Wl,-Ttext=0x400000 src/programs/crt0.S src/programs/hello.c -o test_env\C_HELLO.elf
+if errorlevel 1 goto fail
 if not exist "test_env\EFI\BOOT" mkdir "test_env\EFI\BOOT"
 copy /y bootx64.efi test_env\EFI\BOOT\ >nul
 if errorlevel 1 goto fail

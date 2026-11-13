@@ -82,7 +82,7 @@ void um_test(){
         (uint64_t)user_program_end -
         (uint64_t)user_program_start;
 
-    um_create_segment(USER_CODE_VA,user_program_start,code_size, PAGE_USER,0);
+    um_create_segment(USER_CODE_VA,(void*)user_program_start,code_size, PAGE_USER,0);
     con_write("running user code\n",0x03);
     um_eexecute(USER_CODE_VA);
 }

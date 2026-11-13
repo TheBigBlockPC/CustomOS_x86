@@ -172,7 +172,10 @@ FS_fd_t get_directory_desc(
             return fd;
         }
     }
-    //return 0;
+    FS_fd_t fd;
+    fd.file_size = 0;
+    fd.target_cluser = 0;
+    return fd;
 }
 
 
