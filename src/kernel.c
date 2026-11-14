@@ -128,12 +128,12 @@ void k_main(){
     tty_set_send_event(&on_input);
     tty_allow_input();
 
-    /*uint64_t start = hpet_millis();
+    uint64_t start = hpet_millis();
     present();
-    uint64_t end = hpet_millis();*/
-    //con_write("Present call transfer: ",0x02);
-    //print_uint64_dec(end-start);
-    //con_write("ms\n",0x02);
+    uint64_t end = hpet_millis();
+    con_write("Present call transfer: ",0x02);
+    print_uint64_dec(end-start);
+    con_write("ms\n",0x02);
     tty_print("> ");
     uint64_t next_cursor_update = hpet_millis()+250;
     bool cursor_visible = false;

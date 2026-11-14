@@ -27,6 +27,22 @@ void memory_copy(void* dst, const void* src, uint64_t size)
     }
 }
 
+void framebuffer_copy(void* dst, const void* src,
+                      uint64_t size)
+{
+    uint64_t count = size / 4;
+
+    __asm__ volatile(
+        "cld\n\t"
+        "rep movsl"
+        : "+D"(dst), "+S"(src), "+c"(count)
+        :
+        : "memory", "cc"
+    );
+
+    __asm__ volatile("sfence" ::: "memory");
+}
+
 void str_copy(char* dest, char* src, bool add_null){
     int i=0;
     while(true){

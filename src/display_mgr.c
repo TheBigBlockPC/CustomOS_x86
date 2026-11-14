@@ -33,7 +33,7 @@ void setup_double_buffer(){
 
 void present(){
     if(double_buffered){
-        memory_copy(fb,back_fb,fb_size);
+        framebuffer_copy(fb,back_fb,fb_size);
     }
 }
 
