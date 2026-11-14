@@ -112,7 +112,7 @@ void set_draw_cursor(bool draw){
     if(draw){
         draw_cursor(x,y);
     }
-    present();
+    //present();
 }
 
 void draw_chars(terminal_character *viewport, int cursor_x, int cursor_y){
@@ -146,5 +146,5 @@ void draw_chars(terminal_character *viewport, int cursor_x, int cursor_y){
 
     prev_cursor_x = cursor_x;
     prev_cursor_y = cursor_y;
-    present();
+    //present();
 }

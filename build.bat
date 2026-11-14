@@ -5,10 +5,10 @@ pushd "%~dp0" || exit /b 1
 set "CLANG=C:\Users\j.naumann\appdata\Local\Programs\LLVM\bin\clang.exe"
 set "FLAGS=-target x86_64-pc-windows-msvc -ffreestanding -fno-builtin -nostdlib -mno-red-zone -mgeneral-regs-only -fno-stack-protector -fuse-ld=lld"
 
-"%CLANG%" %FLAGS% -Wl,-entry:efi_main -Wl,-subsystem:efi_application -o bootx64.efi src/main.c src/console_renderer.c src/console.c src/util.c
+"%CLANG%" %FLAGS% -Wl,-entry:efi_main -Wl,-subsystem:efi_application -o bootx64.efi src/main.c src/console_renderer.c src/console.c src/util.c src/display_mgr.c
 if errorlevel 1 goto fail
 
-"%CLANG%" %FLAGS% -Wl,-entry:kernel_entry -Wl,-subsystem:native -Wl,-base:0xffffffff80000000 -Wl,-fixed -Wl,-dynamicbase:no -o kernel.exe src/boot.c src/console_renderer.c src/console.c src/kernel.c src/drivers/keyboard_ps2.c src/input_subsystem.c src/tty.c src/memory.c src/cpu.c src/paging.c src/util.c src/gdt/gdt.c src/gdt/gdt.S src/interrupts/interrupts.c src/interrupts/interrupts.S src/panic.c src/acpi.c src/pcie.c src/drivers/nvme.c src/drivers/sata.c src/filesystem.c src/vmm.c src/hpet.c src/syscall.c src/tss.c src/usermode.c src/user_enter.S src/syscall_entry.S src/user_pgrgram.S src/elf64.c 
+"%CLANG%" %FLAGS% -DBUILD_KERNEL -Wl,-entry:kernel_entry -Wl,-subsystem:native -Wl,-base:0xffffffff80000000 -Wl,-fixed -Wl,-dynamicbase:no -o kernel.exe src/boot.c src/console_renderer.c src/console.c src/kernel.c src/drivers/keyboard_ps2.c src/input_subsystem.c src/tty.c src/memory.c src/cpu.c src/paging.c src/util.c src/gdt/gdt.c src/gdt/gdt.S src/interrupts/interrupts.c src/interrupts/interrupts.S src/panic.c src/acpi.c src/pcie.c src/drivers/nvme.c src/drivers/sata.c src/filesystem.c src/vmm.c src/hpet.c src/syscall.c src/tss.c src/usermode.c src/user_enter.S src/syscall_entry.S src/user_pgrgram.S src/elf64.c src/display_mgr.c src/interrupts/apic.c src/interrupts/lapic_timer.c
 if errorlevel 1 goto fail
 
 "%CLANG%" --target=x86_64-unknown-linux-gnu -DSYS_EXIT=3 -fuse-ld=lld -nostdlib -static -Wl,-e,_start -Wl,-Ttext=0x400000 src/programs/hello_world.S -o test_env\HELLO.elf

@@ -209,11 +209,12 @@ uint8_t* sata_read_block(uint8_t sata_index, uint64_t lba)
 void block_storage_init(void)
 {
     if (pcie_find_device(1, 8, 2, PCIE_NO_DEVICE) != PCIE_NO_DEVICE) {
-        nvme_driver_init();
+        /*nvme_driver_init();
         if (nvme_read_block(0, 0)) {
             storage_kind = 1;
             return;
-        }
+        }*/
+        storage_kind = 2;
     }
     sata_driver_init();
     if (sata_read_block(0, 0)) storage_kind = 2;

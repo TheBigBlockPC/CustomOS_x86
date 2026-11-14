@@ -3,6 +3,7 @@
 Requires clang, lld, QEMU and OVMF. Never rewrites the working boot image.
 """
 import importlib.util
+import argparse
 import os
 from pathlib import Path
 import shutil
@@ -21,6 +22,10 @@ def run(*args, **kwargs):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--timer-only', action='store_true',
+                        help='run foundation/timer checks before kernel storage initialization')
+    arguments = parser.parse_args()
     with tempfile.TemporaryDirectory(prefix='customos-foundation-') as directory:
         temporary = Path(directory)
         host = temporary / 'memory-host'
@@ -32,14 +37,23 @@ def main():
              str(ROOT / 'tests/core_host.c'), '-o', str(core)])
         run([str(core)], env={**os.environ, 'ASAN_OPTIONS': 'detect_leaks=0'})
         kernel = (ROOT / 'src/kernel.c').read_text()
-        kernel = ('void foundation_selftest(void);\n'
+        kernel = ('void foundation_selftest(void);\nvoid timer_boot_tick(void);\n'
+                  'void timer_test_complete(void);\n'
                   'void foundation_boot_complete(unsigned long long root);\n' + kernel)
         kernel = kernel.replace('    set_mmu();', '    set_mmu();\n    foundation_selftest();')
         kernel = kernel.replace('    fs_pos = fs_root();',
                                 '    fs_pos = fs_root();\n    foundation_boot_complete(fs_pos);')
+        # A byte-wise framebuffer copy in every IRQ can consume the whole TCG
+        # CPU. Headless timer checks use a small counter callback instead.
+        kernel = kernel.replace('lapic_timer_start(0x34, 60, on_timer)',
+                                'lapic_timer_start(0x34, 60, timer_boot_tick)')
+        if arguments.timer_only:
+            kernel = kernel.replace('    setup_double_buffer();',
+                                    '    timer_test_complete();\n    setup_double_buffer();')
         (temporary / 'kernel.c').write_text(kernel)
         sources = sorted(p for p in (ROOT / 'src').rglob('*')
-                         if p.suffix in ('.c', '.S') and p.name not in ('kernel.c', 'main.c'))
+                         if p.suffix in ('.c', '.S') and 'programs' not in p.parts
+                         and p.name not in ('kernel.c', 'main.c'))
         tree = temporary / 'test_env'
         shutil.copytree(ROOT / 'test_env', tree)
         flags = ['clang', '-target', 'x86_64-pc-windows-msvc', '-ffreestanding',
@@ -48,12 +62,13 @@ def main():
         run([*flags, '-Wl,-entry:efi_main', '-Wl,-subsystem:efi_application',
              '-o', str(tree / 'EFI/BOOT/bootx64.efi'),
              *[str(ROOT / 'src' / name) for name in
-               ('main.c', 'console.c', 'console_renderer.c', 'util.c')]])
-        run([*flags, '-Wl,-entry:kernel_entry', '-Wl,-subsystem:native',
+               ('main.c', 'console.c', 'console_renderer.c', 'util.c', 'display_mgr.c')]])
+        run([*flags, '-DBUILD_KERNEL', '-Wl,-entry:kernel_entry', '-Wl,-subsystem:native',
              '-Wl,-base:0xffffffff80000000', '-Wl,-fixed', '-Wl,-dynamicbase:no',
              '-I', str(ROOT / 'src'), '-o', str(tree / 'EFI/BOOT/kernel.exe'),
              *map(str, sources), str(temporary / 'kernel.c'),
-             str(ROOT / 'tests/foundation_kernel.c'), str(ROOT / 'tests/foundation_probes.S')])
+             str(ROOT / 'tests/foundation_kernel.c'), str(ROOT / 'tests/foundation_probes.S'),
+             str(ROOT / 'tests/timer_kernel.c')])
         spec = importlib.util.spec_from_file_location('fat_builder', ROOT / 'make_fat32_image.py')
         builder = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(builder)
@@ -85,11 +100,13 @@ def main():
                 raise
             markers = debug.read_text() if debug.exists() else ""
             print(markers, end='', flush=True)
-            if (result.returncode != 33 or 'STORAGE_BOOT_OK' not in markers or
-                    'HIGH_KERNEL_HANDOFF_OK' not in markers):
+            if (result.returncode != 33 or
+                    (not arguments.timer_only and 'STORAGE_BOOT_OK' not in markers) or
+                    'HIGH_KERNEL_HANDOFF_OK' not in markers or 'LAPIC_TIMER_OK' not in markers):
                 print(result.stderr.decode(), trace.read_text()[-6000:] if trace.exists() else "No trace")
                 raise RuntimeError(name + ' failed')
-        print('PASS: all QEMU foundation and storage boots', flush=True)
+        print('PASS: all QEMU foundation and ' +
+              ('timer' if arguments.timer_only else 'storage/timer') + ' boots', flush=True)
 
 
 if __name__ == '__main__':

@@ -24,7 +24,7 @@ enter_user:
 
     push 0x23
     push rdx
-    push 0x02
+    push 0x202
     push 0x1B
     push rcx
 

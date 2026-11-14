@@ -175,5 +175,7 @@ void foundation_boot_complete(uint64_t root)
 {
     REQUIRE(root >= 2);
     debug("STORAGE_BOOT_OK\n");
+    extern void timer_selftest(void);
+    timer_selftest();
     finish(0x10);
 }

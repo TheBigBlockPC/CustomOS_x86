@@ -49,7 +49,9 @@ clang "${flags[@]}" \
   src/syscall_entry.S \
   src/user_pgrgram.S \
   src/elf64.c \
-  src/display_mgr.c
+  src/display_mgr.c  \
+  src/interrupts/apic.c \
+  src/interrupts/lapic_timer.c
 
 mkdir -p test_env/EFI/BOOT
 

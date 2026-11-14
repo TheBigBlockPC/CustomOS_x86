@@ -9,7 +9,7 @@
 #define SYS_ADD     2
 #define SYS_EXIT    3
 #define SYS_GFX     4
-#define SYS_PRESENT 5
+//#define SYS_PRESENT 5
 
 #define SYSCALL_STACK_SIZE (16 * 1024)
 
@@ -159,9 +159,9 @@ uint64_t syscall_dispatch(
             //reserved
         case SYS_GFX:
             return sys_gfx(arg0);
-        case SYS_PRESENT:
+        /*case SYS_PRESENT:
             present();
-            return 0;
+            return 0;*/
         default:
             con_write("Invallid SYSCALL\n",0x01);
             return (uint64_t)-1;

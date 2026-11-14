@@ -14,3 +14,7 @@ it needs neither administrator rights nor WSL. QEMU is expected at
 Memory/exception APIs, validation instructions, and the foundation review are in
 [docs/foundation.md](docs/foundation.md). Run `python3 tests/run_foundation.py` for
 host regression checks and QEMU NVMe/SATA boot tests.
+
+The periodic local APIC timer API and HPET calibration are described in
+[docs/timers.md](docs/timers.md). Run `python3 tests/run_timer_host.py` for the
+timer driver host checks.

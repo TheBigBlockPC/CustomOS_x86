@@ -15,7 +15,7 @@ int main(void) {
                 fb[x + y*width] = x+y+t;
             }
         }
-        sys_present();
+        //sys_present();
         t++;
     }
     return 0;

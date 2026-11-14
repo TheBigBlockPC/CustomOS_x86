@@ -7,7 +7,7 @@
 #define SYS_ADD     2
 #define SYS_EXIT    3
 #define SYS_GFX     4
-#define SYS_PRESENT 5
+//#define SYS_PRESENT 5
 
 static inline uint64_t syscall2(
     uint64_t number,
@@ -61,6 +61,7 @@ static inline void sys_gfx(
         0
     );
 }
+/*
 static inline void sys_present(
 ) {
     syscall2(
@@ -68,5 +69,5 @@ static inline void sys_present(
         0,
         0
     );
-}
+}*/
 #endif

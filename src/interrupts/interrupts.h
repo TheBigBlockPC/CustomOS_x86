@@ -36,6 +36,7 @@ typedef void (*exception_handler_t)(exception_frame_t* frame);
 
 void interrupts_init(void);
 void interrupts_set_isr(uint8_t index, isr_t handler);
+isr_t interrupts_get_isr(uint8_t index);
 /* Vectors 0..31; NULL unregisters. Handlers execute with interrupts masked. */
 void exceptions_set_handler(uint8_t vector, exception_handler_t handler);
 
