@@ -6,6 +6,10 @@
 .extern kernel_saved_rsp
 
 enter_user:
+    # SYS_EXIT bypasses IRETQ, so preserve the kernel caller's flags explicitly.
+    pushfq
+    cli
+
     # Save Microsoft x64 nonvolatile registers
     push rbx
     push rbp
@@ -36,6 +40,7 @@ enter_user:
 resume_kernel:
     # Restore the original kernel stack
     mov rsp, [rip + kernel_saved_rsp]
+    mov qword ptr [rip + kernel_saved_rsp], 0
 
     # Restore original kernel registers
     pop r15
@@ -46,6 +51,9 @@ resume_kernel:
     pop rdi
     pop rbp
     pop rbx
+
+    # Restore IF only after the original stack and registers are usable again.
+    popfq
 
     # Return to the C caller of enter_user
     ret

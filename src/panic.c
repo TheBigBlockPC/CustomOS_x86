@@ -3,11 +3,14 @@
 #include "panic.h"
 #include "interrupts/interrupts.h"
 #include "util.h"
+#include "display_mgr.h"
 
 void panic(char* message){
     __asm__ volatile("cli" ::: "memory");
     con_write("Kernel panic\n",0x01);
     con_write(message,0x07);
+    /* The timer cannot present the back buffer after CLI. */
+    present();
     while(1){
         __asm__ __volatile__("hlt");
     }

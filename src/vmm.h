@@ -5,7 +5,10 @@
 
 #define VM_BASE 0xFFFFC00000000000ULL
 
+#define VM_NULL 0
+#define VM_PAGE_ALIGNED 1
+
 void vmm_init();
-void* vm_alloc(uint64_t size);
+void* vm_alloc(uint64_t size, uint64_t flags);
 void vm_free(void* addr);
 #endif

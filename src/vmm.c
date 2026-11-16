@@ -9,82 +9,122 @@ static uint64_t total_virtual_pages = 0;
 static uint64_t free_virtual_pages = 0;
 static uint64_t bitmap_pages = 0;
 
-static void bitmap_set(uint64_t page, bool alloc_start) {
+typedef enum {
+    VM_ALLOC_FREE,
+    VM_ALLOC_USED,
+    VM_ALLOC_EXCLUSIVE
+} alloc_state;
+
+typedef struct vm_region {
+    alloc_state state;
+    uint64_t base;
+    uint64_t size;
+    struct vm_region* next;
+    struct vm_region* prev;
+} vm_region_t;
+
+typedef struct vm_region_page_header {
+    struct vm_region_page* next;
+    uint64_t used_count;
+} vm_region_page_header_t;
+
+#define VM_REGIONS_PER_PAGE \
+    ((PAGE_SIZE - sizeof(vm_region_page_header_t)) \
+    / sizeof(vm_region_t))
+
+typedef struct vm_region_page {
+    vm_region_page_header_t header;
+    vm_region_t regions[VM_REGIONS_PER_PAGE];
+} vm_region_page_t;
+
+vm_region_page_t* genisis_page = (vm_region_page_t*)VM_BASE;
+/*
+static void bitmap_set(uint64_t page) {
     uint8_t* bitmap = (uint8_t*)VM_BASE;
 
-    uint64_t index = page / 4;
-    uint8_t shift = (page % 4) * 2;
+    uint64_t index = page / 8;
+    uint8_t shift = (page % 8);
 
-    bitmap[index] &= (uint8_t)~(0b11u << shift);
-    bitmap[index] |= (uint8_t)((alloc_start ? 0b11u : 0b01u) << shift);
+    bitmap[index] |= 1 << shift;
 }
 
 static void bitmap_clear(uint64_t page) {
     uint8_t* bitmap = (uint8_t*)VM_BASE;
 
-    uint64_t index = page / 4;
-    uint8_t shift = (page % 4) * 2;
+    uint64_t index = page / 8;
+    uint8_t shift = (page % 8);
 
-    bitmap[index] &= (uint8_t)~(0b11u << shift);
+    bitmap[index] &= (uint8_t)~(1 << shift);
 }
 
 static uint8_t bitmap_get(uint64_t page) {
     uint8_t* bitmap = (uint8_t*)VM_BASE;
 
-    return (bitmap[page / 4] >> ((page % 4) * 2)) & 0b11;
+    return (bitmap[page / 8] >> (page % 8)) & 1;
 }
+*/
 
 void vmm_init(){
     con_write("VMM: initializing VMM\n",0x07);
-    total_virtual_pages = mem_get_free_page_count();
-    uint64_t bitmap_size = int_div_round_up(total_virtual_pages, 4);
-    bitmap_pages = int_div_round_up(bitmap_size, PAGE_SIZE_4K);
-    free_virtual_pages = total_virtual_pages - bitmap_pages;
-    
-    con_write("VMM: allocating bitmap\n",0x07);
-    for(int i=0;i<bitmap_pages;i++){
-        uint64_t target_addr = VM_BASE + PAGE_SIZE_4K * i;
-        uint64_t pmm_addr = mem_alloc_page();
-        mmu_map_4k(target_addr,pmm_addr,PAGE_RW);
-        bitmap_set(i,i==0);
-        uint64_t physical_addr = 0;
-    }
+    //total_virtual_pages = mem_get_free_page_count();
+    uint64_t pmm_addr = mem_alloc_page();
+    mmu_map_4k(VM_BASE,pmm_addr,PAGE_RW);
+    genisis_page->header.used_count = 1;
+    genisis_page->header.next = (vm_region_page_t*)0;
+    genisis_page->regions[0].base = VM_BASE;
+    genisis_page->regions[0].size = PAGE_SIZE_4K;
+    genisis_page->regions[0].next = (vm_region_t*)0;
+    genisis_page->regions[0].prev = (vm_region_t*)0;
+    genisis_page->regions[0].state = VM_ALLOC_EXCLUSIVE;
     con_write("VMM: ready\n",0x02);
 }
 
-
-static uint64_t first_fit_alloc(uint64_t size){
-    if(size == 0 || size > total_virtual_pages)
-        return 0;
-    uint64_t scan_region = total_virtual_pages - size;
-    for(uint64_t base = 0; base <= scan_region; base++){
-        bool valid = true;
-        for(uint64_t offset = 0; offset < size; offset++){
-            if(bitmap_get(base + offset) & 0b01){
-                valid = false;
-                break;
-            }
-        }
-        if(valid)
-            return base;
+void* vm_alloc(uint64_t size, uint64_t flags){
+    con_write("allocating memory, flags=",0x02);
+    print_uint64(flags);
+    con_write("\n",0x02);
+    if (!size) return 0;
+    if (flags & ~((uint64_t)VM_PAGE_ALIGNED)) panic("VMM: invalid allocation flags");
+    uint64_t used_count = genisis_page->header.used_count;
+    if (used_count >= VM_REGIONS_PER_PAGE) panic("VMM: region metadata full");
+    vm_region_t* last_block = &(genisis_page->regions[0]);
+    while(last_block->next != 0){
+        last_block = last_block->next;
     }
-    return 0;
-}
-
-void* vm_alloc(uint64_t size){
-    uint64_t n_pages = int_div_round_up(size, PAGE_SIZE_4K);
-    bool running = true;
-    uint64_t base = first_fit_alloc(n_pages);
-    if(base == 0) return 0;
+    /* Region bases are absolute virtual addresses, including VM_BASE. */
+    if (last_block->size > ~last_block->base) panic("VMM: address overflow");
+    uint64_t base = last_block->base + last_block->size;
+    if (base > ~0ULL - (PAGE_SIZE_4K - 1)) panic("VMM: address overflow");
+    if(flags & VM_PAGE_ALIGNED){
+        con_write("page aligned\n",0x03);
+        base = (base + PAGE_SIZE_4K - 1) & ~(PAGE_SIZE_4K - 1);
+    }else{
+        con_write("not page aligned\n",0x01);
+    }
+    if (size > ~base - (PAGE_SIZE_4K - 1)) panic("VMM: allocation size overflow");
+    uint64_t pagealigned_base = base & ~(PAGE_SIZE_4K-1);
+    uint64_t pagealigned_end = (base + size + PAGE_SIZE_4K - 1) & ~(PAGE_SIZE_4K-1);
+    uint64_t n_pages = (pagealigned_end-pagealigned_base) / PAGE_SIZE_4K;
     for(uint64_t i = 0;i<n_pages;i++){
+        uint64_t virt = i * PAGE_SIZE_4K + pagealigned_base;
+        uint64_t existing_phys;
+        /* Packed allocations can share the previous allocation's last page. */
+        if (virt_to_phys(virt, &existing_phys)) continue;
         uint64_t page_phys = mem_alloc_page();
-        uint64_t virt = (base+i) * PAGE_SIZE_4K + VM_BASE;
         mmu_map_4k(virt,page_phys,PAGE_RW | PAGE_NX);
-        bitmap_set(base+i,i==0);
     }
-    return (void*)(base * PAGE_SIZE_4K + VM_BASE);
-}
 
+    genisis_page->regions[used_count].base = base;
+    genisis_page->regions[used_count].size = size;
+    genisis_page->regions[used_count].prev = last_block;
+    genisis_page->regions[used_count].next = 0;
+    genisis_page->regions[used_count].state = VM_ALLOC_USED;
+    last_block->next = &(genisis_page->regions[used_count]);
+    genisis_page->header.used_count++;
+    con_write("done\n",0x05);
+    return (void*)base;
+}
+/*
 #define ALLOC_START 0b10
 #define ALLOCATED 0b01
 
@@ -97,10 +137,10 @@ bool end_free(uint64_t page){
         return true;
     }
     return false;
-}
+}*/
 
 void vm_free(void* addr){
-    if((uint64_t)addr < VM_BASE || (uint64_t)addr > VM_BASE + total_virtual_pages * PAGE_SIZE_4K){
+    /*if((uint64_t)addr < VM_BASE || (uint64_t)addr > VM_BASE + total_virtual_pages * PAGE_SIZE_4K){
         panic("invallid adress");
     }
     uint64_t base = ((uint64_t)addr - VM_BASE) / PAGE_SIZE_4K;
@@ -122,5 +162,5 @@ void vm_free(void* addr){
         mem_free_page(page_phys);
         mmu_unmap_4k(virt);
         base++;
-    } while(!end_free(base));
+    } while(!end_free(base));*/
 }

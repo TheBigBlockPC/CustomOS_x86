@@ -7,6 +7,10 @@
 static _Alignas(16)
 uint8_t kernel_stack[KERNEL_STACK_SIZE];
 
+/* Ring-3 interrupts must not overwrite the kernel call chain suspended by
+ * enter_user(). The CPU starts those interrupt frames at TSS.rsp0. */
+static _Alignas(16)
+uint8_t privilege_stack[KERNEL_STACK_SIZE];
 
 /*
  * Force this tiny trampoline to use the Microsoft x64 ABI:
@@ -60,7 +64,7 @@ void cpu_enter_kernel(kernel_entry_t entry)
 {
     void *stack_top =
         kernel_stack + sizeof(kernel_stack);
-    tss_init((uint64_t)stack_top);
+    tss_init((uint64_t)(privilege_stack + sizeof(privilege_stack)));
 
     cpu_switch_stack(stack_top, entry);
     __builtin_unreachable();

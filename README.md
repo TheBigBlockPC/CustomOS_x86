@@ -18,3 +18,7 @@ host regression checks and QEMU NVMe/SATA boot tests.
 The periodic local APIC timer API and HPET calibration are described in
 [docs/timers.md](docs/timers.md). Run `python3 tests/run_timer_host.py` for the
 timer driver host checks.
+
+Run `python3 tests/run_usermode.py` for QEMU checks of `SYS_EXIT` flag restoration,
+ring-3 timer interrupts without kernel stack corruption, packed/aligned virtual
+allocations, and panic output with double buffering enabled.

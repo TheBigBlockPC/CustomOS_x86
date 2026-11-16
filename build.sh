@@ -19,7 +19,6 @@ clang "${flags[@]}" \
   -Wl,-base:0xffffffff80000000 -Wl,-fixed -Wl,-dynamicbase:no \
   -o kernel.exe \
   -DBUILD_KERNEL \
-  -DDISABLE_NVME \
   src/boot.c \
   src/console_renderer.c \
   src/console.c \

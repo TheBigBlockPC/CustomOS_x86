@@ -21,7 +21,8 @@ static terminal_character viewport[TERMINAL_W * TERMINAL_H];
 
 /* Substitute only allocation and memory copies; exercise the real renderer
  * and display manager, including the transition to double buffering. */
-void* vm_alloc(uint64_t bytes) {
+void* vm_alloc(uint64_t bytes, uint64_t flags) {
+    CHECK(flags == VM_NULL);
     allocated_bytes = bytes;
     back_buffer = malloc(bytes);
     CHECK(back_buffer != 0);

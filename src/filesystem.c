@@ -242,7 +242,7 @@ void fs_cat(uint64_t cluster, char *name){
     con_write(name,0x07);
     con_write("\n",0x07);
     FS_fd_t desc = get_directory_desc(&metadata,cluster,name);
-    char* data = vm_alloc(desc.file_size+1);
+    char* data = vm_alloc(desc.file_size+1,VM_NULL);
     read_file(&metadata,desc.target_cluser,data,desc.file_size);
     con_write(data,0x07);
     vm_free(data);
@@ -253,7 +253,7 @@ void fs_exec(int64_t cluster, char *name){
     con_write(name,0x07);
     con_write("\n",0x07);
     FS_fd_t desc = get_directory_desc(&metadata,cluster,name);
-    char* data = vm_alloc(desc.file_size+1);
+    char* data = vm_alloc(desc.file_size+1,VM_NULL);
     read_file(&metadata,desc.target_cluser,data,desc.file_size);
     parse_ELF(data,desc.file_size);
     vm_free(data);
