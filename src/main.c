@@ -209,7 +209,7 @@ efi_status_t efi_main(efi_handle_t handle, efi_system_table_t* system)
     }
     efi_gop_mode_info_t* mode = gop->Mode->Information;
     if (!gop->Mode->FrameBufferBase || mode->PixelFormat > PixelBlueGreenRedReserved8BitPerColor ||
-        //mode->HorizontalResolution < 1024 || mode->VerticalResolution < 640 ||
+        mode->HorizontalResolution < TERMINAL_W * 8 || mode->VerticalResolution < TERMINAL_H * 8 ||
         mode->PixelsPerScanLine < mode->HorizontalResolution || mode->PixelsPerScanLine > 65535 ||
         mode->VerticalResolution > 65535 ||
         (uint64_t)mode->PixelsPerScanLine * mode->VerticalResolution * 4 > gop->Mode->FrameBufferSize){
@@ -222,8 +222,9 @@ efi_status_t efi_main(efi_handle_t handle, efi_system_table_t* system)
     boot_info.framebuffer_size = gop->Mode->FrameBufferSize;
     boot_info.framebuffer_stride = mode->PixelsPerScanLine;
     boot_info.framebuffer_height = mode->VerticalResolution;
+    boot_info.framebuffer_width = mode->HorizontalResolution;
     memory_zero(boot_info.framebuffer, boot_info.framebuffer_size);
-    dp_set_FB(boot_info.framebuffer, boot_info.framebuffer_stride, boot_info.framebuffer_height);
+    dp_set_FB(boot_info.framebuffer, boot_info.framebuffer_stride, boot_info.framebuffer_height, boot_info.framebuffer_width);
     con_clear();
     con_write("Console Subsystem Initialized\nLoading kernel.exe...\n", 0x07);
     efi_loaded_image_protocol_t* image;

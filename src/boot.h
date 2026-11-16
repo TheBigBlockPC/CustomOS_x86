@@ -5,7 +5,7 @@
 #include "console.h"
 
 #define KERNEL_BASE 0xffffffff80000000ULL
-#define BOOT_INFO_VERSION 1
+#define BOOT_INFO_VERSION 2
 #define BOOT_MAX_SECTIONS 16
 
 typedef struct {
@@ -24,7 +24,7 @@ typedef struct {
     uint32_t descriptor_version;
     uint32_t* framebuffer;
     uint64_t framebuffer_size;
-    uint16_t framebuffer_stride, framebuffer_height;
+    uint16_t framebuffer_stride, framebuffer_height, framebuffer_width;
     const void* rsdp;
     console_state_t console;
 } boot_info_t;

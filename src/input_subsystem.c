@@ -1,6 +1,9 @@
 #include "types.h"
 #include "drivers/keyboard_ps2.h"
 #include "input_subsystem.h"
+#ifdef BUILD_KERNEL
+#include "drivers/usb/usb.h"
+#endif
 
 static char scan_to_ascii[128] = {
     [0x29] = '^',
@@ -113,6 +116,7 @@ static char scan_to_ascii_shift[128] = {
 };
 
 static char key_state[128];
+static char usb_key_state[128];
 
 
 static kb_event key_handler;
@@ -121,21 +125,32 @@ void set_kb_handler(kb_event handler){
     key_handler = handler;
 }
 
-void poll_events(){
-    uint8_t scan_code = get_key();
+static void input_scancode(uint8_t scan_code, bool usb){
     if(scan_code == 0 || !key_handler) return;
 
     uint8_t normalized_scan = scan_code & 0b01111111;
     int is_down = !(scan_code & 0b10000000);
-    if(is_down){
-        key_state[normalized_scan] = 1;
-    }else{
-        key_state[normalized_scan] = 0;
-    }
+    char* state = usb ? usb_key_state : key_state;
+    state[normalized_scan] = is_down;
+    /* A release on one keyboard must not release another keyboard's key. */
+    if(!is_down && (usb ? key_state[normalized_scan] : usb_key_state[normalized_scan])) return;
 
-    if(key_state[0x2A] == 1 || key_state[0x36] == 1){
+    if(key_state[0x2A] || key_state[0x36] || usb_key_state[0x2A] || usb_key_state[0x36]){
         key_handler(scan_code,scan_to_ascii_shift[normalized_scan],is_down);
     }else{
         key_handler(scan_code,scan_to_ascii[normalized_scan],is_down);
     }
+}
+
+#ifdef BUILD_KERNEL
+static void input_usb_key(uint8_t scan_code, int down){
+    input_scancode(scan_code | (down ? 0 : 0x80U), true);
+}
+#endif
+
+void poll_events(){
+    input_scancode(get_key(), false);
+#ifdef BUILD_KERNEL
+    usb_poll_keyboard(input_usb_key);
+#endif
 }

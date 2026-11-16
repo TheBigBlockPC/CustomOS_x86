@@ -10,7 +10,7 @@
 
 void boot_import_console(const boot_info_t* info)
 {
-    dp_set_FB(info->framebuffer, info->framebuffer_stride, info->framebuffer_height);
+    dp_set_FB(info->framebuffer, info->framebuffer_stride, info->framebuffer_height, info->framebuffer_width);
     con_import_state(&info->console);
 }
 

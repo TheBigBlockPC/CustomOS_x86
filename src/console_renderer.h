@@ -7,7 +7,7 @@ typedef struct {
 } terminal_character;
 
 void set_fontsize(uint8_t size);
-void cr_set_FB(uint32_t *fb_base, uint16_t w, uint16_t h);
+void cr_set_FB(uint32_t *fb_base, uint16_t row_stride, uint16_t h, uint16_t visible_width);
 void draw_chars(terminal_character *viewport, int cursor_x, int cursor_y);
 void set_draw_cursor(bool draw);
 #endif

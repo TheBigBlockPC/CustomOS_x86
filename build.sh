@@ -19,6 +19,7 @@ clang "${flags[@]}" \
   -Wl,-base:0xffffffff80000000 -Wl,-fixed -Wl,-dynamicbase:no \
   -o kernel.exe \
   -DBUILD_KERNEL \
+  -DDISABLE_NVME \
   src/boot.c \
   src/console_renderer.c \
   src/console.c \
@@ -51,13 +52,16 @@ clang "${flags[@]}" \
   src/elf64.c \
   src/display_mgr.c  \
   src/interrupts/apic.c \
-  src/interrupts/lapic_timer.c
+  src/interrupts/lapic_timer.c \
+  src/drivers/usb/usb.c \
+  src/drivers/usb/xhci.c
 
 mkdir -p test_env/EFI/BOOT
+mkdir -p test_env/BIN
 
 clang --target=x86_64-unknown-linux-gnu -DSYS_EXIT=3 \
   -fuse-ld=lld -nostdlib -static -Wl,-e,_start -Wl,-Ttext=0x400000 \
-  src/programs/hello_world.S -o test_env/HELLO.elf
+  src/programs/hello_world.S -o test_env/BIN/HELLO.elf
 
 clang --target=x86_64-unknown-linux-gnu \
     -ffreestanding \
@@ -72,5 +76,5 @@ clang --target=x86_64-unknown-linux-gnu \
     -Wl,-e,_start \
     -Wl,-Ttext=0x400000 \
     src/programs/crt0.S src/programs/hello.c \
-    -o test_env/C_HELLO.elf
+    -o test_env/BIN/C_HELLO.elf
 cp bootx64.efi kernel.exe test_env/EFI/BOOT/

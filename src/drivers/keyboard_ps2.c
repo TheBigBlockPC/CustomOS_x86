@@ -7,7 +7,9 @@ static inline uint8_t inb(uint16_t port) {
 }
 
 uint8_t get_key(){
-    if(!(inb(0x64) & 1)){
+    uint8_t status = inb(0x64);
+    /* An absent i8042 reads as 0xff (e.g. a USB-only QEMU machine). */
+    if(status == 0xff || !(status & 1)){
         return 0;
     }
     return inb(0x60);

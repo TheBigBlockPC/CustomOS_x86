@@ -32,23 +32,28 @@ static uint32_t colors[16] = {
     0x7F7F7F
 };
 
+static uint16_t stride;
 static uint16_t width;
 static uint16_t height;
 static uint16_t offset_x;
 static uint16_t offset_y;
 static uint32_t *fb;
+static bool redraw_all = true;
 
 void set_fontsize(uint8_t size){
     fontsize = size;
 }
 
 static void fill_rect(uint32_t *fb_base, int x, int y, int w, int h, uint32_t color){
-    int start = x + y * width;
-    for(int py=0;py<h;py++){
-        for(int px=0;px<w;px++){
-            int offset = px + py * width;
-            if(offset < 0 | offset > width * height) continue;
-            fb_base[start+offset] = color;
+    int end_x = x + w;
+    int end_y = y + h;
+    if (x < 0) x = 0;
+    if (y < 0) y = 0;
+    if (end_x > width) end_x = width;
+    if (end_y > height) end_y = height;
+    for(int py=y;py<end_y;py++){
+        for(int px=x;px<end_x;px++){
+            fb_base[(uint64_t)py * stride + px] = color;
         }
     }
 }
@@ -71,34 +76,38 @@ static void draw_glyph(uint32_t *fb_base, int x, int y, char glyph, uint32_t fg_
     }
 }
 
-void cr_set_FB(uint32_t *fb_base, uint16_t w, uint16_t h){
-    
-    if(w < (16*64) || h < (16*40)){
+void cr_set_FB(uint32_t *fb_base, uint16_t row_stride, uint16_t h, uint16_t visible_width){
+    stride = row_stride;
+    width = visible_width < stride ? visible_width : stride;
+    height = h;
+    if(width < (16*TERMINAL_W) || height < (16*TERMINAL_H)){
         set_fontsize(1);
     }else{
         set_fontsize(2);
     }
-    width = w;
-    height = h;
     fb = fb_base;
-    offset_x = (width - 64*(fontsize*8))/2;
-    offset_y = (height - 40*(fontsize*8))/2;
+    int terminal_width = TERMINAL_W * fontsize * 8;
+    int terminal_height = TERMINAL_H * fontsize * 8;
+    offset_x = width >= terminal_width ? (width - terminal_width) / 2 : 0;
+    offset_y = height >= terminal_height ? (height - terminal_height) / 2 : 0;
+    redraw_all = true;
 }
 
 void draw_cursor(int x, int y){
-    int base = (x*(fontsize*8) + offset_x)+(y*(fontsize*8) + offset_y)*width;
-    for(int i=0;i<(fontsize*8);i++){
-        fb[base+i] = 0x00FFFFFF;
-        fb[base+i+(fontsize*8-1)*width] = 0x00FFFFFF;
-        fb[base+i*width] = 0x00FFFFFF;
-        fb[base+i*width+(fontsize*8-1)] = 0x00FFFFFF;
-    }
+    int size = fontsize * 8;
+    int left = x * size + offset_x;
+    int top = y * size + offset_y;
+    fill_rect(fb, left, top, size, 1, 0x00FFFFFF);
+    fill_rect(fb, left, top + size - 1, size, 1, 0x00FFFFFF);
+    fill_rect(fb, left, top, 1, size, 0x00FFFFFF);
+    fill_rect(fb, left + size - 1, top, 1, size, 0x00FFFFFF);
 }
 
 static bool cursor_visible = false;
 static terminal_character *viewport_ptr;
 void set_draw_cursor(bool draw){
     cursor_visible = draw;
+    if (!viewport_ptr) return;
 
     int x = prev_cursor_x;
     int y = prev_cursor_y;
@@ -124,6 +133,7 @@ void draw_chars(terminal_character *viewport, int cursor_x, int cursor_y){
             uint8_t color = tc.color;
             
             if(
+                redraw_all ||
                 current.character != tc.character ||
                 current.color != tc.color ||
                 (cursor_x == x && cursor_y == y) ||
@@ -146,5 +156,6 @@ void draw_chars(terminal_character *viewport, int cursor_x, int cursor_y){
 
     prev_cursor_x = cursor_x;
     prev_cursor_y = cursor_y;
+    redraw_all = false;
     //present();
 }

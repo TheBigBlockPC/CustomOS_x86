@@ -7,26 +7,29 @@
 #include "vmm.h"
 #endif
 
-static uint16_t width;
+static uint16_t stride;
 static uint16_t height;
+static uint16_t visible_width;
 static uint32_t *fb;
 static uint32_t *back_fb;
-static uint32_t fb_size;
+static uint64_t fb_size;
 static bool double_buffered = false;
 
-void dp_set_FB(uint32_t *fb_base, uint16_t w, uint16_t h){
-    width = w;
+void dp_set_FB(uint32_t *fb_base, uint16_t row_stride, uint16_t h, uint16_t w){
+    stride = row_stride;
     height = h;
+    visible_width = w;
     fb = fb_base;
-    fb_size = w*h*4;
-    cr_set_FB(fb,w,h);
+    fb_size = (uint64_t)stride * height * sizeof(*fb);
+    double_buffered = false;
+    cr_set_FB(fb,stride,height,visible_width);
 }
 
 #ifdef BUILD_KERNEL
 void setup_double_buffer(){
     back_fb = (uint32_t*)vm_alloc(fb_size);
     memory_copy(back_fb,fb,fb_size);
-    cr_set_FB(back_fb,width,height);
+    cr_set_FB(back_fb,stride,height,visible_width);
     double_buffered = true;
 }
 #endif
@@ -39,8 +42,9 @@ void present(){
 
 fb_t get_fb(){
     fb_t fb_desc;
-    fb_desc.w = width;
+    fb_desc.w = stride;
     fb_desc.h = height;
+    fb_desc.visible_width = visible_width;
     if(double_buffered){
         fb_desc.fb = &back_fb[0];
     }else{

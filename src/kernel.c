@@ -20,30 +20,38 @@
 #include "display_mgr.h"
 #include "interrupts/apic.h"
 #include "interrupts/lapic_timer.h"
+#include "drivers/usb/usb.h"
 enum Mode {
     BASE,
     FILESYSTEM
 };
+
+static uint64_t bin_folder = 0;
 
 enum Mode k_sehll_state = BASE;
 
 void parse_kernel_shell(char* input){
     if(str_start_comp(input,"fs")){
         k_sehll_state = FILESYSTEM;
+        return;
     }
 
     if(str_start_comp(input,"C_PF")){
         char* INVALLID_ADDR = (char*)0xFFFFFFFFFF;
         *INVALLID_ADDR=0;
+        return;
     }
     if(str_start_comp(input,"C_DZ")){
         int a = 0;
         int b = 0;
         int c = a/b;
+        return;
     }
     if(str_start_comp(input,"EXEC")){
         um_test();
+        return;
     }
+    fs_exec(bin_folder,input);
 }
 uint64_t fs_pos = 0;
 void parse_fs_shell(char* input){
@@ -111,6 +119,7 @@ void k_main(){
     apic_init();
     pci_init();
     hpet_init();
+    usb_init();
 
     if (!lapic_timer_start(0x34, 60, on_timer))
         panic("LAPIC timer failed");
@@ -141,6 +150,8 @@ void k_main(){
         "syscall"
     );*/
     auto_demo_timer = hpet_millis() + 3000;
+    uint64_t fs_pos = fs_root();
+    bin_folder = fs_cd(fs_pos,"BIN");
     while(1){
         poll_events();
         if(hpet_millis() > next_cursor_update){
@@ -152,8 +163,8 @@ void k_main(){
         }
 
         if(hpet_millis() > auto_demo_timer){
-            uint64_t fs_pos = fs_root();
-            fs_exec(fs_pos,"C_HELLO");
+            //
+            //fs_exec(fs_pos,"C_HELLO");
         }
     }
     

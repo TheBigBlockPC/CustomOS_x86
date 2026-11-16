@@ -179,12 +179,16 @@ These are emulator checks, not physical-hardware or SMP validation.
    setup and a defined FS/GS/SWAPGS convention. Sources: `src/gdt/gdt.c`,
    `src/cpu.c`, and `src/interrupts/interrupts.c`.
 
-4. **The framebuffer renderer assumes at least 1024 × 640 pixels.**
-   The bootloader now rejects smaller modes, unsupported pixel formats, and
-   invalid framebuffer dimensions before initializing the console. It does not
-   select a compatible mode automatically; supporting more displays still needs
-   mode selection or dynamic terminal dimensions.
+4. **The framebuffer console needs at least 512 × 320 visible pixels.**
+   The renderer uses 8 × 8 cells, or 16 × 16 when the visible mode is at least
+   1024 × 640. It centers using the visible width and addresses rows using the
+   framebuffer stride, including any padding. The bootloader rejects modes
+   smaller than 512 × 320, unsupported pixel formats, and invalid framebuffer
+   dimensions. It does not select a compatible mode automatically; supporting
+   smaller displays still needs mode selection or dynamic terminal dimensions.
    Sources: `src/main.c`, `src/console_renderer.c:draw_chars`.
+   Run `python3 tests/run_display_host.py` for padded-stride, centering, cursor,
+   clipping, and double-buffer regression checks.
 
 5. **The memory and interrupt APIs are single-CPU boot infrastructure.**
    There are no PMM/page-table locks, remote TLB shootdowns, address-space lifecycle,
