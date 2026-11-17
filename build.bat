@@ -8,13 +8,15 @@ set "FLAGS=-target x86_64-pc-windows-msvc -ffreestanding -fno-builtin -nostdlib 
 "%CLANG%" %FLAGS% -Wl,-entry:efi_main -Wl,-subsystem:efi_application -o bootx64.efi src/main.c src/console_renderer.c src/console.c src/util.c src/display_mgr.c
 if errorlevel 1 goto fail
 
-"%CLANG%" %FLAGS% -DBUILD_KERNEL -Wl,-entry:kernel_entry -Wl,-subsystem:native -Wl,-base:0xffffffff80000000 -Wl,-fixed -Wl,-dynamicbase:no -o kernel.exe src/boot.c src/console_renderer.c src/console.c src/kernel.c src/drivers/keyboard_ps2.c src/input_subsystem.c src/tty.c src/memory.c src/cpu.c src/paging.c src/util.c src/gdt/gdt.c src/gdt/gdt.S src/interrupts/interrupts.c src/interrupts/interrupts.S src/panic.c src/acpi.c src/pcie.c src/drivers/nvme.c src/drivers/sata.c src/filesystem.c src/vmm.c src/hpet.c src/syscall.c src/tss.c src/usermode.c src/user_enter.S src/syscall_entry.S src/user_pgrgram.S src/elf64.c src/display_mgr.c src/interrupts/apic.c src/interrupts/lapic_timer.c
+"%CLANG%" %FLAGS% -DBUILD_KERNEL -Wl,-entry:kernel_entry -Wl,-subsystem:native -Wl,-base:0xffffffff80000000 -Wl,-fixed -Wl,-dynamicbase:no -o kernel.exe src/boot.c src/console_renderer.c src/console.c src/kernel.c src/drivers/keyboard_ps2.c src/input_subsystem.c src/tty.c src/memory.c src/cpu.c src/paging.c src/util.c src/gdt/gdt.c src/gdt/gdt.S src/interrupts/interrupts.c src/interrupts/interrupts.S src/panic.c src/acpi.c src/pcie.c src/drivers/nvme.c src/drivers/sata.c src/filesystem.c src/vmm.c src/hpet.c src/syscall.c src/tss.c src/usermode.c src/user_enter.S src/syscall_entry.S src/user_pgrgram.S src/elf64.c src/display_mgr.c src/interrupts/apic.c src/interrupts/lapic_timer.c src/drivers/usb/usb.c src/drivers/usb/xhci.c
 if errorlevel 1 goto fail
 
-"%CLANG%" --target=x86_64-unknown-linux-gnu -DSYS_EXIT=3 -fuse-ld=lld -nostdlib -static -Wl,-e,_start -Wl,-Ttext=0x400000 src/programs/hello_world.S -o test_env\HELLO.elf
+mkdir test_env\BIN
+
+"%CLANG%" --target=x86_64-unknown-linux-gnu -DSYS_EXIT=3 -fuse-ld=lld -nostdlib -static -Wl,-e,_start -Wl,-Ttext=0x400000 src/programs/hello_world.S -o test_env\BIN\HELLO.elf
 if errorlevel 1 goto fail
 
-"%CLANG%" --target=x86_64-unknown-linux-gnu -DSYS_EXIT=3 -fuse-ld=lld -nostdlib -static -Wl,-e,_start -Wl,-Ttext=0x400000 src/programs/crt0.S src/programs/hello.c -o test_env\C_HELLO.elf
+"%CLANG%" --target=x86_64-unknown-linux-gnu -DSYS_EXIT=3 -fuse-ld=lld -nostdlib -static -Wl,-e,_start -Wl,-Ttext=0x400000 src/programs/crt0.S src/programs/hello.c -o test_env\BIN\C_HELLO.elf
 if errorlevel 1 goto fail
 if not exist "test_env\EFI\BOOT" mkdir "test_env\EFI\BOOT"
 copy /y bootx64.efi test_env\EFI\BOOT\ >nul

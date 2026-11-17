@@ -42,4 +42,5 @@ typedef struct {
 
 typedef uint8_t bool;
 
+#define UINT64_MAX 0xFFFFFFFFFFFFFFFF
 #endif

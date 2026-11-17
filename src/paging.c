@@ -37,8 +37,11 @@ static void validate_mapping(uint64_t virt, uint64_t phys, uint64_t size, uint64
         physical_mask = ((1ULL << bits) - 1) & PAGE_TABLE_ADDR_MASK;
     }
     if ((virt & (size - 1)) || (phys & (size - 1)) || !canonical(virt) ||
-        !canonical(virt + size - 1) || (phys & ~physical_mask) || (flags & ~MAP_FLAGS))
-        panic("MMU: invalid mapping address or flags");
+        !canonical(virt + size - 1) || (phys & ~physical_mask))
+        panic("MMU: invalid mapping address");
+    if (flags & ~MAP_FLAGS){
+        panic("MMU: invalid mapping flags");
+    }
 }
 
 static page_table_t* table_at(uint64_t entry)

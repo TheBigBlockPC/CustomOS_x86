@@ -143,6 +143,12 @@ void k_main(){
     con_write("Present call transfer: ",0x02);
     print_uint64_dec(end-start);
     con_write("ms\n",0x02);
+    
+    void* data = vm_alloc(256,VM_PAGE_ALIGNED);
+    void* data2 = vm_alloc(65536,VM_PAGE_ALIGNED);
+    vm_free(data);
+    print_alloc();
+
     tty_print("> ");
     uint64_t next_cursor_update = hpet_millis()+250;
     bool cursor_visible = false;
