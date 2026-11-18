@@ -37,12 +37,13 @@ def run(command):
 
 
 def host(directory):
-    executable = directory / 'keyboard-host'
-    run(['clang', '-x', 'c', '-DBUILD_KERNEL', '-O1', '-g', '-fno-builtin',
-         '-fsanitize=address,undefined', '-Wall', '-Wextra', '-Werror',
-         str(ROOT / 'src/drivers/usb/test_keyboard_host.inc'), '-o', str(executable)])
-    subprocess.run([str(executable)], check=True,
-                   env={**os.environ, 'ASAN_OPTIONS': 'detect_leaks=0'})
+    for name in ('keyboard', 'xhci'):
+        executable = directory / (name + '-host')
+        run(['clang', '-x', 'c', '-DBUILD_KERNEL', '-O1', '-g', '-fno-builtin',
+             '-fsanitize=address,undefined', '-Wall', '-Wextra', '-Werror',
+             str(ROOT / f'src/drivers/usb/test_{name}_host.inc'), '-o', str(executable)])
+        subprocess.run([str(executable)], check=True,
+                       env={**os.environ, 'ASAN_OPTIONS': 'detect_leaks=0'})
 
 
 def build(directory):
@@ -188,10 +189,41 @@ def integration(directory):
             print(f'PASS: {name} reaches input loop', flush=True)
         finally:
             machine.close()
-    for name, memory, prefix in [('keyboard', '128M', []),
-                                  ('mouse-then-keyboard', '8G', ['usb-mouse,bus=xhci.0,port=1'])]:
-        machine = Machine(directory, disk, name, ['qemu-xhci,id=xhci', *prefix,
-                          'usb-kbd,id=keyboard,bus=xhci.0,port=2'], memory)
+    scenarios = [
+        ('keyboard', '128M', ['qemu-xhci,id=xhci'], 'xhci.0', '2', None),
+        ('mouse-then-keyboard', '8G', ['qemu-xhci,id=xhci',
+            'usb-mouse,bus=xhci.0,port=1'], 'xhci.0', '2', None),
+        ('second-controller', '128M', ['qemu-xhci,id=first',
+            'qemu-xhci,id=xhci'], 'xhci.0', '2', None),
+        ('second-controller-after-mouse', '8G', ['qemu-xhci,id=first',
+            'usb-mouse,bus=first.0,port=1', 'qemu-xhci,id=xhci'], 'xhci.0', '2', None),
+        ('hub-keyboard', '128M', ['qemu-xhci,id=xhci',
+            'usb-hub,id=hub,bus=xhci.0,port=1'], 'xhci.0', '1.3', None),
+        ('hub-mouse-then-keyboard', '128M', ['qemu-xhci,id=xhci',
+            'usb-hub,id=hub,bus=xhci.0,port=1',
+            'usb-mouse,bus=xhci.0,port=1.1'], 'xhci.0', '1.3', None),
+        ('nested-hubs-second-controller', '8G', ['qemu-xhci,id=first',
+            'qemu-xhci,id=xhci', 'usb-hub,id=outer,bus=xhci.0,port=1',
+            'usb-hub,id=hub,bus=xhci.0,port=1.2'], 'xhci.0', '1.2.3', None),
+        ('hub-detach', '128M', ['qemu-xhci,id=xhci',
+            'usb-hub,id=hub,bus=xhci.0,port=1'], 'xhci.0', '1.3', 'hub'),
+        ('nested-hub-detach', '128M', ['qemu-xhci,id=xhci',
+            'usb-hub,id=outer,bus=xhci.0,port=1',
+            'usb-hub,id=hub,bus=xhci.0,port=1.2'], 'xhci.0', '1.2.3', 'hub'),
+        ('powered-hub', '128M', ['qemu-xhci,id=xhci',
+            'usb-hub,id=hub,bus=xhci.0,port=1,port-power=on'], 'xhci.0', '1.3', None),
+        ('empty-nested-hub-then-keyboard', '128M', ['qemu-xhci,id=xhci',
+            'usb-hub,id=hub,bus=xhci.0,port=1',
+            'usb-hub,id=empty,bus=xhci.0,port=1.1'], 'xhci.0', '1.3', None),
+        ('five-hub-depth', '128M', ['qemu-xhci,id=xhci',
+            *[f'usb-hub,id=hub{i},bus=xhci.0,port=' + '.'.join(['1'] * (i + 1))
+              for i in range(5)]], 'xhci.0', '1.1.1.1.1.3', None),
+        ('empty-hub-then-root-keyboard', '128M', ['qemu-xhci,id=xhci',
+            'usb-hub,id=hub,bus=xhci.0,port=1'], 'xhci.0', '2', None),
+    ]
+    for name, memory, devices, bus, port, detach_hub in scenarios:
+        machine = Machine(directory, disk, name, [*devices,
+                          f'usb-kbd,id=keyboard,bus={bus},port={port}'], memory)
         try:
             assert 'USB: boot keyboard ready' in machine.text(), machine.text()
             machine.tap('a', 0x1e, ord('a'))
@@ -227,13 +259,17 @@ def integration(directory):
             machine.keys([('b', False)])
             machine.wait('KEY b0 62 0', offset)
             assert 'xHCI: stopped' not in machine.text(), machine.text()
+            assert 'xHCI: command completion error' not in machine.text(), machine.text()
+            assert 'xHCI: control transfer error' not in machine.text(), machine.text()
             print(f'PASS: {name} ({memory}): typing, release, Shift, German layout, TTY, ring wrap, repeat', flush=True)
             offset = len(machine.text())
             machine.keys([('a', True)])
             machine.wait('KEY 1e 61 1', offset)
-            machine.qmp('device_del', {'id': 'keyboard'})
+            machine.qmp('device_del', {'id': detach_hub or 'keyboard'})
             machine.wait('KEY 9e 61 0', offset)
-            print('PASS: detach releases held key', flush=True)
+            assert 'xHCI: stopped' not in machine.text(), machine.text()
+            assert 'xHCI: control transfer error' not in machine.text(), machine.text()
+            print(f'PASS: {detach_hub or "keyboard"} detach releases held key', flush=True)
         finally:
             machine.close()
 

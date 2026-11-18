@@ -16,16 +16,24 @@ void con_write(char* text, uint8_t color) { (void)text; (void)color; }
 uint64_t hpet_millis(void) { return now; }
 uint8_t get_key(void) { uint8_t scan = ps2_scan; ps2_scan = 0; return scan; }
 bool xhci_init(void) { return false; }
-uint8_t xhci_port_count(void) { return 0; }
-bool xhci_open_port(uint8_t p) { (void)p; return false; }
-bool xhci_close_device(void) { return true; }
-bool xhci_set_ep0_packet_size(uint8_t n) { (void)n; return false; }
-int xhci_control(uint8_t t, uint8_t r, uint16_t v, uint16_t i, void* d, uint16_t n)
-{ (void)t; (void)r; (void)v; (void)i; (void)d; (void)n; return -1; }
-bool xhci_keyboard_endpoint(uint8_t a, uint16_t n, uint8_t i)
-{ (void)a; (void)n; (void)i; return false; }
-bool xhci_keyboard_active(void) { return active; }
-bool xhci_keyboard_poll(uint8_t report[8]) {
+xhci_controller_t* xhci_next_controller(xhci_controller_t* p) { (void)p; return 0; }
+uint8_t xhci_port_count(xhci_controller_t* h) { (void)h; return 0; }
+xhci_device_t* xhci_open_port(xhci_controller_t* h, uint8_t p) { (void)h; (void)p; return 0; }
+xhci_device_t* xhci_open_hub_port(xhci_device_t* d, uint8_t p, uint8_t s)
+{ (void)d; (void)p; (void)s; return 0; }
+bool xhci_configure_hub(xhci_device_t* d, uint8_t p, uint8_t t)
+{ (void)d; (void)p; (void)t; return false; }
+bool xhci_close_device(xhci_device_t* d) { (void)d; return true; }
+xhci_device_t* xhci_parent(xhci_device_t* d) { (void)d; return 0; }
+uint8_t xhci_parent_port(xhci_device_t* d) { (void)d; return 0; }
+bool xhci_set_ep0_packet_size(xhci_device_t* d, uint8_t n) { (void)d; (void)n; return false; }
+int xhci_control(xhci_device_t* dev, uint8_t t, uint8_t r, uint16_t v, uint16_t i, void* d, uint16_t n)
+{ (void)dev; (void)t; (void)r; (void)v; (void)i; (void)d; (void)n; return -1; }
+bool xhci_keyboard_endpoint(xhci_device_t* d, uint8_t a, uint16_t n, uint8_t i)
+{ (void)d; (void)a; (void)n; (void)i; return false; }
+bool xhci_keyboard_active(xhci_device_t* d) { (void)d; return active; }
+bool xhci_keyboard_poll(xhci_device_t* d, uint8_t report[8]) {
+    (void)d;
     if (!pending) return false;
     memory_copy(report, pending_report, 8); pending = false; return true;
 }
@@ -63,6 +71,14 @@ int main(void) {
     config[33] = 0; CHECK(!usb_find_keyboard(config, sizeof(config), &keyboard)); config[33] = 10;
     config[27] = 255; CHECK(!usb_find_keyboard(config, sizeof(config), &keyboard)); config[27] = 7;
     config[18] = 1; CHECK(!usb_find_keyboard(config, sizeof(config), &keyboard)); config[18] = 9;
+    uint8_t hub_config[] = {9,2,25,0,1,1,0,0x80,0, 9,4,0,0,1,9,0,0,0,
+                            7,5,0x81,3,1,0,255};
+    CHECK(usb_find_hub(hub_config, sizeof(hub_config)));
+    for (uint16_t n = 0; n < sizeof(hub_config); n++) CHECK(!usb_find_hub(hub_config, n));
+    hub_config[16] = 1; CHECK(usb_find_hub(hub_config, sizeof(hub_config)));
+    hub_config[16] = 2; CHECK(!usb_find_hub(hub_config, sizeof(hub_config))); hub_config[16] = 0;
+    hub_config[12] = 1; CHECK(!usb_find_hub(hub_config, sizeof(hub_config))); hub_config[12] = 0;
+    hub_config[18] = 0; CHECK(!usb_find_hub(hub_config, sizeof(hub_config)));
     /* Bounded descriptor fuzzing: hostile lengths must never escape the buffer. */
     uint32_t random = 1;
     uint8_t fuzz[256];
@@ -73,6 +89,7 @@ int main(void) {
         uint16_t n = random & 255U;
         if (n >= 9) { fuzz[0] = 9; fuzz[1] = 2; fuzz[2] = n; fuzz[3] = 0; fuzz[5] = 1; }
         (void)usb_find_keyboard(fuzz, n, &keyboard);
+        (void)usb_find_hub(fuzz, n);
     }
     keyboard_ready = true;
     set_kb_handler(event);
