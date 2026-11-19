@@ -17,7 +17,7 @@ static um_alloc_t allocations[256];
 static int alloc_index = 0;
 void* usr_allocate_kernel(uint64_t size,uint64_t usr_base,uint64_t flags){
     uint64_t n_pages = int_div_round_up(size,PAGE_SIZE_4K);
-    void* buffer = vm_alloc(size,VM_PAGE_ALIGNED);
+    void* buffer = vm_alloc(size,VM_PAGE_ALIGNED,VM_FLAGS_FULL_PAGES);
     for(uint64_t i=0;i<n_pages;i++){
         uint64_t offset = i * PAGE_SIZE_4K;
         uint64_t phys = 0;

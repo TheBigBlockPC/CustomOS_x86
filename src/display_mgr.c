@@ -27,7 +27,7 @@ void dp_set_FB(uint32_t *fb_base, uint16_t row_stride, uint16_t h, uint16_t w){
 
 #ifdef BUILD_KERNEL
 void setup_double_buffer(){
-    back_fb = (uint32_t*)vm_alloc(fb_size,VM_NULL);
+    back_fb = (uint32_t*)vm_alloc(fb_size,VM_NULL,VM_FLAGS_DEFAULT);
     memory_copy(back_fb,fb,fb_size);
     cr_set_FB(back_fb,stride,height,visible_width);
     double_buffered = true;

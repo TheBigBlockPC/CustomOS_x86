@@ -147,7 +147,7 @@ static vm_region_t* insert_region_after(
 // Virtual memory allocation
 // ============================================================
 
-void* vm_alloc(uint64_t size, uint64_t alignment)
+void* vm_alloc(uint64_t size, uint64_t alignment, uint8_t flags)
 {
     if (!size)
         return 0;
@@ -155,6 +155,10 @@ void* vm_alloc(uint64_t size, uint64_t alignment)
     if (!alignment)
         alignment = VM_DEFAULT_ALIGNMENT;
 
+    if(flags & VM_FLAGS_FULL_PAGES){
+        alignment = PAGE_SIZE_4K;
+        size = int_div_round_up(size,PAGE_SIZE_4K) * PAGE_SIZE_4K;
+    }
     bool used_free_block = false;
 
     uint64_t alignment_padding = 0;
@@ -518,6 +522,10 @@ void print_alloc()
             
             case VM_ALLOC_UNUSED:
                 con_write("UNUSED\n", 0x07);
+                break;
+            
+            case VM_ALLOC_PROCESSING:
+                con_write("PROCESSING\n", 0x03);
                 break;
         }
 
