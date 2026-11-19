@@ -33,7 +33,7 @@ typedef struct vm_region_page_header {
 #define VM_REGIONS_PER_PAGE \
     ((PAGE_SIZE_4K - sizeof(vm_region_page_header_t)) \
     / sizeof(vm_region_t))
-
+//#define VM_REGIONS_PER_PAGE 4
 typedef struct vm_region_page {
     vm_region_page_header_t header;
     vm_region_t regions[VM_REGIONS_PER_PAGE];
@@ -104,16 +104,24 @@ uint64_t get_alignment_padding(uint64_t val, uint64_t align)
 // Region creation
 // ============================================================
 
-vm_region_t* find_unused(vm_region_page_t* region_page_desc){
-    for(int i=0;i<VM_REGIONS_PER_PAGE;i++){
-        vm_region_t* desc = &(region_page_desc->regions[i]);
-        if(desc->state == VM_ALLOC_UNUSED){
-            region_page_desc->header.used_count++;
-            desc->state = VM_ALLOC_PROCESSING;
-            return desc;
+vm_region_t* find_unused(){
+    vm_region_page_t* header = genisis_page;
+    while(1){
+        for(int i=0;i<VM_REGIONS_PER_PAGE;i++){
+            vm_region_t* desc = &(header->regions[i]);
+            if(desc->state == VM_ALLOC_UNUSED){
+                header->header.used_count++;
+                desc->state = VM_ALLOC_PROCESSING;
+                return desc;
+            }
         }
+        vm_region_page_t* next = header->header.next;
+        if(!next){
+            panic("VMM: faild to find unused region");
+        }
+        header = next;
+        //panic("VMM: region metadata full");
     }
-    panic("VMM: region metadata full");
 }
 
 static vm_region_t* insert_region_after(
@@ -122,10 +130,18 @@ static vm_region_t* insert_region_after(
     uint64_t size,
     alloc_state state)
 {
-    if (genisis_page->header.used_count >= VM_REGIONS_PER_PAGE)
-        panic("VMM: region metadata full");
+    vm_region_page_t* header = genisis_page;
+    while(header->header.used_count >= VM_REGIONS_PER_PAGE){
+        vm_region_page_t* next = header->header.next;
+        if(!next){
+            panic("VMM: faild to allocate region, no free metadataslot");
+        }
+        header = next;
+    }
+    //if (genisis_page->header.used_count >= VM_REGIONS_PER_PAGE)
+    //    panic("VMM: region metadata full");
 
-    vm_region_t* region = find_unused(genisis_page);
+    vm_region_t* region = find_unused();
 
     region->base = base;
     region->size = size;
@@ -146,6 +162,25 @@ static vm_region_t* insert_region_after(
 // ============================================================
 // Virtual memory allocation
 // ============================================================
+
+void allocate_more_metadata(){
+    vm_region_page_t* meta = genisis_page;
+    while (meta->header.next)
+    {
+        meta = meta->header.next;
+    }
+    if(meta->header.used_count != VM_REGIONS_PER_PAGE-2){
+        return;
+    }
+    //con_write("allocating new metadata\n",0x05);
+    vm_region_page_t* new_meta = (vm_region_page_t*)vm_alloc(sizeof(vm_region_page_t),4096,VM_FLAGS_DEFAULT);
+    new_meta->header.next = 0;
+    new_meta->header.used_count = 0;
+    meta->header.next = new_meta;
+    for(int i=0;i<VM_REGIONS_PER_PAGE;i++){
+        new_meta->regions[i].state = VM_ALLOC_UNUSED;
+    }
+}
 
 void* vm_alloc(uint64_t size, uint64_t alignment, uint8_t flags)
 {
@@ -249,11 +284,11 @@ void* vm_alloc(uint64_t size, uint64_t alignment, uint8_t flags)
     // Check metadata capacity
     // --------------------------------------------------------
 
-    uint64_t required_regions =
-        (!used_free_block) +
-        (alignment_padding != 0) +
-        (free_padding != 0);
-
+    //uint64_t required_regions =
+    //    (!used_free_block) +
+    //    (alignment_padding != 0) +
+    //    (free_padding != 0);
+    /*
     uint64_t used_count =
         genisis_page->header.used_count;
 
@@ -261,7 +296,7 @@ void* vm_alloc(uint64_t size, uint64_t alignment, uint8_t flags)
         required_regions > VM_REGIONS_PER_PAGE - used_count)
     {
         panic("VMM: region metadata full");
-    }
+    }*/
 
 
     // --------------------------------------------------------
@@ -353,7 +388,7 @@ void* vm_alloc(uint64_t size, uint64_t alignment, uint8_t flags)
             VM_ALLOC_USED
         );
     }
-
+    allocate_more_metadata();
     return (void*)base;
 }
 
@@ -362,21 +397,40 @@ void* vm_alloc(uint64_t size, uint64_t alignment, uint8_t flags)
 // Virtual memory freeing
 // ============================================================
 
-void merge_free_regions(){
+vm_region_page_t* get_header(vm_region_t* region){
+    uint64_t addr = (uint64_t)region;
+    uint64_t header_addr = addr & ~(PAGE_SIZE_4K-1);
+    return (vm_region_page_t*)header_addr;
+}
+
+void merge_free_regions()
+{
     vm_region_t* block = &genisis_page->regions[0];
-    while(block->next){
-        if(block->state == VM_ALLOC_FREE){
-            vm_region_t* scan_pos = block->next;
-            uint64_t end_addr = block->base + block->size;
-            while(scan_pos && scan_pos->state == VM_ALLOC_FREE){
-                scan_pos->state = VM_ALLOC_UNUSED;
-                end_addr = scan_pos->base + scan_pos->size;
-                scan_pos = scan_pos->next;
-                genisis_page->header.used_count--;
-            }
-            block->size = end_addr - block->base;
-            block->next = scan_pos;
+
+    while (block && block->next) {
+        vm_region_t* next = block->next;
+
+        if (block->state == VM_ALLOC_FREE &&
+            next->state == VM_ALLOC_FREE &&
+            block->base + block->size == next->base)
+        {
+            block->size += next->size;
+            block->next = next->next;
+
+            if (block->next)
+                block->next->prev = block;
+
+            next->state = VM_ALLOC_UNUSED;
+            next->next = 0;
+            next->prev = 0;
+            next->base = 0;
+            next->size = 0;
+            vm_region_page_t* header = get_header(next);
+            header->header.used_count--;
+
+            continue;
         }
+
         block = block->next;
     }
 }
