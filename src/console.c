@@ -74,6 +74,8 @@ static void put(char c, uint8_t color){
 }
 
 void con_clear(){
+    cursor_x = 0;
+    cursor_y = 0;
     for(int i=0;i<(TERMINAL_W*TERMINAL_H);i++){
         terminal[i] = (terminal_character){
             .character = 0,

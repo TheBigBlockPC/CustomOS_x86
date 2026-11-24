@@ -3,6 +3,7 @@
 #include "console.h"
 #include "acpi.h"
 #include "paging.h"
+#include "memory.h"
 
 typedef struct {
     char signature[8];
@@ -17,6 +18,7 @@ typedef struct {
 } __attribute__((packed)) rsdp_t;
 
 static rsdp_t* rsdp;
+static uint64_t rsdp_phys;
 static acpi_sdt_header_t* xsdt;
 
 static bool checksum_ok(const void* ptr, size_t length)
@@ -31,7 +33,7 @@ static acpi_sdt_header_t* map_table(uint64_t address)
 {
     if (!address) panic("ACPI: null table address");
     mmu_identity_map_range(address, sizeof(acpi_sdt_header_t), PAGE_NX);
-    acpi_sdt_header_t* table = (void*)address;
+    acpi_sdt_header_t* table = mem_phys_to_virt(address);
     if (table->length < sizeof(*table) || table->length > 0x1000000)
         panic("ACPI: invalid table length");
     mmu_identity_map_range(address, table->length, PAGE_NX);
@@ -53,7 +55,7 @@ acpi_sdt_header_t* acpi_find_table(const char signature[4])
     panic("ACPI: requested table not found");
 }
 
-void set_rsdp(const void* ptr) { rsdp = (rsdp_t*)ptr; }
+void set_rsdp(const void* ptr) { rsdp_phys = (uint64_t)ptr; }
 
 void print_acpi_sig(void)
 {
@@ -67,8 +69,9 @@ void print_acpi_sig(void)
 
 void init_acpi(void)
 {
-    if (!rsdp) panic("ACPI: missing RSDP");
-    mmu_identity_map_range((uint64_t)rsdp, sizeof(*rsdp), PAGE_NX);
+    if (!rsdp_phys) panic("ACPI: missing RSDP");
+    mmu_identity_map_range(rsdp_phys, sizeof(rsdp_t), PAGE_NX);
+    rsdp = mem_phys_to_virt(rsdp_phys);
     const char signature[] = "RSD PTR ";
     for (int i = 0; i < 8; i++)
         if (rsdp->signature[i] != signature[i]) panic("ACPI: invalid RSDP signature");
@@ -76,7 +79,7 @@ void init_acpi(void)
     if (rsdp->revision < 2) panic("ACPI: XSDT required");
     if (rsdp->length < sizeof(*rsdp) || rsdp->length > PAGE_SIZE_4K)
         panic("ACPI: invalid RSDP length");
-    mmu_identity_map_range((uint64_t)rsdp, rsdp->length, PAGE_NX);
+    mmu_identity_map_range(rsdp_phys, rsdp->length, PAGE_NX);
     if (!checksum_ok(rsdp, rsdp->length)) panic("ACPI: invalid extended checksum");
     xsdt = map_table(rsdp->xsdt_address);
     if (xsdt->signature[0] != 'X' || xsdt->signature[1] != 'S' ||

@@ -212,6 +212,7 @@ static int nvme_find_namespace(nvme_controller_t* c)
 
 static int nvme_identify_namespace(nvme_controller_t* c)
 {
+    
     if (!nvme_identify(c, c->namespace_id, NVME_IDENTIFY_NAMESPACE)) {
         con_write("NVMe: Identify Namespace failed\n", 0x04);
         return 0;
@@ -281,14 +282,14 @@ static void nvme_setup_queue(nvme_queue_t* q, uint8_t* sq_page, uint8_t* cq_page
     q->cq = (volatile nvme_cqe_t*)cq_page;
     q->depth = depth;
     q->phase = 1;
-    q->sq_doorbell = (volatile uint32_t*)(doorbell_base + 2u * queue_id * stride);
-    q->cq_doorbell = (volatile uint32_t*)(doorbell_base + (2u * queue_id + 1u) * stride);
+    q->sq_doorbell = (volatile uint32_t*)mem_phys_to_virt(doorbell_base + 2u * queue_id * stride);
+    q->cq_doorbell = (volatile uint32_t*)mem_phys_to_virt(doorbell_base + (2u * queue_id + 1u) * stride);
 }
 
 static int nvme_init(nvme_controller_t* c, uint64_t bar)
 {
     memory_zero(c, sizeof(*c));
-    c->regs = (volatile nvme_regs_t*)bar;
+    c->regs = (volatile nvme_regs_t*)mem_phys_to_virt(bar);
     c->cap = c->regs->cap;
 
     uint32_t version = c->regs->vs;

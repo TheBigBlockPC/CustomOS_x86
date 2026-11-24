@@ -4,6 +4,7 @@
 #include "util.h"
 
 #ifdef BUILD_KERNEL
+#include "memory.h"
 #include "vmm.h"
 #endif
 
@@ -32,7 +33,12 @@ void setup_double_buffer(){
     cr_set_FB(back_fb,stride,height,visible_width);
     double_buffered = true;
 }
+void move_fb(){
+    fb = (uint32_t*)((uint64_t)fb + HHDM_BASE);
+    cr_set_FB(fb,stride,height,visible_width);
+}
 #endif
+
 
 void present(){
     if(double_buffered){

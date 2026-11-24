@@ -110,11 +110,17 @@ void k_main(){
     interrupts_init();
 
     setup_default_exceptionhanders();
+    prefill_PML4();
+
     setup_hhdm();
 
     set_mmu();
+    move_fb();
+    page_table_t* test = mmu_create_address_space();
+    mmu_set_address_space(test);
+    con_write("setting PML4 sucsessful",0x02);
     vmm_init();
-
+    
     init_acpi();
     apic_init();
     pci_init();
@@ -126,7 +132,6 @@ void k_main(){
     asm volatile("sti" ::: "memory");
 
     setup_double_buffer();
-
     block_storage_init();
     syscall_init();
 

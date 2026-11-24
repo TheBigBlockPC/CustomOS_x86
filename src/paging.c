@@ -8,8 +8,8 @@
 #define PAGE_2M_ADDR_MASK    0x000FFFFFFFE00000ULL
 #define MAP_FLAGS (PAGE_RW | PAGE_USER | PAGE_PWT | PAGE_PCD | PAGE_NX)
 
-typedef struct { uint64_t entries[512]; } __attribute__((aligned(4096))) page_table_t;
 static page_table_t PML4;
+static page_table_t* active_PML4 = &PML4;
 static bool mmu_active;
 static uint64_t physical_mask;
 
@@ -36,9 +36,22 @@ static void validate_mapping(uint64_t virt, uint64_t phys, uint64_t size, uint64
         if (bits < 32 || bits > 52) panic("MMU: unsupported physical address width");
         physical_mask = ((1ULL << bits) - 1) & PAGE_TABLE_ADDR_MASK;
     }
-    if ((virt & (size - 1)) || (phys & (size - 1)) || !canonical(virt) ||
-        !canonical(virt + size - 1) || (phys & ~physical_mask))
-        panic("MMU: invalid mapping address");
+    if(virt & (size - 1)){
+        panic("MMU: invalid mapping address (virt size error)");
+    }
+    
+    if(phys & (size - 1)){
+        panic("MMU: invalid mapping address (phys size error)");
+    }
+    if(!canonical(virt)){
+        panic("MMU: invalid mapping address (gap)");
+    }
+    if(!canonical(virt + size - 1)){
+        panic("MMU: invalid mapping address (gap end)");
+    }
+    if(phys & ~physical_mask){
+        panic("MMU: invalid mapping address (mask)");
+    }
     if (flags & ~MAP_FLAGS){
         panic("MMU: invalid mapping flags");
     }
@@ -67,7 +80,7 @@ static page_table_t* next_table(page_table_t* table, uint16_t index, uint64_t fl
 
 static page_table_t* get_pd(uint64_t address, uint64_t flags)
 {
-    page_table_t* pdp = next_table(&PML4, (address >> 39) & 511, flags);
+    page_table_t* pdp = next_table(active_PML4, (address >> 39) & 511, flags);
     return next_table(pdp, (address >> 30) & 511, flags);
 }
 
@@ -125,8 +138,8 @@ void mmu_map_2m(uint64_t virtual_addr, uint64_t physical_addr, uint64_t flags)
     flush_page(virtual_addr);
 }
 
-void identitymap_4k(uint64_t address, uint64_t flags) { mmu_map_4k(address, address, flags); }
-void identitymap_2m(uint64_t address, uint64_t flags) { mmu_map_2m(address, address, flags); }
+void identitymap_4k(uint64_t address, uint64_t flags) { mmu_map_4k(address+HHDM_BASE, address, flags); }
+void identitymap_2m(uint64_t address, uint64_t flags) { mmu_map_2m(address+HHDM_BASE, address, flags); }
 
 void mmu_identity_map_range(uint64_t address, uint64_t length, uint64_t flags)
 {
@@ -178,7 +191,7 @@ void set_mmu(void)
        "d"(0x00070106u)
     : "memory");
     __asm__ volatile("wbinvd" ::: "memory");
-    __asm__ volatile("mov %0, %%cr3" :: "r"(mem_kernel_to_phys(&PML4)) : "memory");
+    __asm__ volatile("mov %0, %%cr3" :: "r"(mem_kernel_to_phys(active_PML4)) : "memory");
     __asm__ volatile("mov %0, %%cr0" :: "r"(cr0) : "memory");
     mmu_active = true;
 }
@@ -237,4 +250,46 @@ bool virt_to_phys(uint64_t va, uint64_t *pa) {
 
     *pa = table_phys | (va & 0xFFF);
     return true;
+}
+
+void prefill_PML4(){
+    for(int i=256;i<512;i++){
+        uint64_t* entry = &PML4.entries[i];
+        if (!(*entry & PAGE_PRESENT))
+            *entry = mem_alloc_page() | PAGE_PRESENT | PAGE_RW;
+    }
+}
+
+page_table_t* mmu_get_default_address_space(){
+    return &PML4;
+}
+
+void mmu_set_address_space(page_table_t* PML4_ptr){
+    active_PML4 = PML4_ptr;
+    uint64_t phys;
+    virt_to_phys((uint64_t)active_PML4,&phys);
+    __asm__ volatile("mov %0, %%cr3" :: "r"(phys) : "memory");
+}
+
+page_table_t* mmu_create_address_space(void)
+{
+    uint64_t phys = mem_alloc_page();
+    page_table_t* table = mem_phys_to_virt(phys);
+
+    for (int i = 0; i < 256; i++) {
+        table->entries[i] = 0;
+    }
+
+    for (int i = 256; i < 512; i++) {
+        table->entries[i] = PML4.entries[i];
+    }
+
+    return table;
+}
+
+void mmu_destroy_adress_spece(page_table_t* PML4_ptr){
+    if(active_PML4 == PML4_ptr){
+        mmu_set_address_space(&PML4);
+    }
+    mem_free_page((uint64_t)PML4_ptr);
 }

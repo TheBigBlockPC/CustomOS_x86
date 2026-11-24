@@ -4,6 +4,7 @@
 #include "util.h"
 #include "console.h"
 #include "panic.h"
+#include "memory.h"
 
 #define HPET_CAPABILITIES       0x000
 #define HPET_CONFIG             0x010
@@ -100,8 +101,8 @@ void hpet_init(void) {
         table->register_bit_offset != 0 || !table->address || (table->address & 7))
         panic("HPET: invalid MMIO table");
 
-    hpet_base = (volatile uint8_t*)table->address;
     mmu_identity_map_range(table->address, 4096, PAGE_NX | PAGE_RW | PAGE_UC);
+    hpet_base = (volatile uint8_t*)mem_phys_to_virt(table->address);
     uint64_t caps = hpet_read(HPET_CAPABILITIES);
     uint32_t period_fs = caps >> 32;
     if (!period_fs || period_fs > 100000000U)

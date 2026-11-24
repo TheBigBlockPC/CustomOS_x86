@@ -14,6 +14,7 @@ void dp_set_FB(uint32_t *fb_base, uint16_t row_stride, uint16_t h, uint16_t w);
 
 #ifdef BUILD_KERNEL
 void setup_double_buffer();
+void move_fb();
 #endif
 
 void present();

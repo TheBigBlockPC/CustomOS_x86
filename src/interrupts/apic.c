@@ -6,6 +6,7 @@
 #include "apic.h"
 #include "../console.h"
 #include "../util.h"
+#include "../memory.h"
 
 /* 1. Hardware registers and driver state. */
 #define IA32_APIC_BASE  0x1B
@@ -165,7 +166,7 @@ static uint64_t parse_madt(uint32_t* flags) {
                 panic("Invalid IOAPIC address");
 
             ioapic_t* apic = &ioapics[ioapic_count++];
-            apic->base = (volatile uint8_t*)(uint64_t)info->address;
+            apic->base = (volatile uint8_t*)mem_phys_to_virt((uint64_t)info->address);
             apic->gsi_base = info->gsi_base;
 
             mmu_identity_map_range(info->address, 4096,
@@ -212,7 +213,7 @@ static void lapic_init(uint64_t address) {
         if (!base || base != address)
             panic("LAPIC address mismatch");
         mmu_identity_map_range(base, 4096, PAGE_RW | PAGE_NX | PAGE_UC);
-        lapic_base = (volatile uint8_t*)base;
+        lapic_base = (volatile uint8_t*)mem_phys_to_virt(base);
     }
 
     uint32_t max_lvt = (lapic_read(LAPIC_VERSION) >> 16) & 0xFF;

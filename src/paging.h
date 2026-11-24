@@ -18,6 +18,8 @@
 #define PAGE_UC (PAGE_PCD | PAGE_PWT)
 #define PAGE_WB 0ULL
 #define PAGE_HUGE PAGE_PS
+
+typedef struct { uint64_t entries[512]; } __attribute__((aligned(4096))) page_table_t;
 /* PRESENT/PS are supplied internally; flags=0 means supervisor, read-only,
  * executable. Changes invalidate translations on this CPU only. No SMP yet.
  * 4K mapping splits existing 2M leaves; 2M mapping never discards a 4K table. */
@@ -31,4 +33,9 @@ void set_mmu(void);
 int get_mmu_active(void);
 bool virt_to_phys(uint64_t va, uint64_t *pa);
 void mmu_unmap_4k(uint64_t virtual_addr);
+void prefill_PML4();
+page_table_t* mmu_get_default_address_space();
+void mmu_set_address_space(page_table_t* PML4_ptr);
+page_table_t* mmu_create_address_space(void);
+void mmu_destroy_adress_spece(page_table_t* PML4_ptr);
 #endif

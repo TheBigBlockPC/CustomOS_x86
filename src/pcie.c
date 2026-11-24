@@ -4,6 +4,7 @@
 #include "paging.h"
 #include "pcie.h"
 #include "util.h"
+#include "memory.h"
 
 #define MMIO_FLAGS (PAGE_RW | PAGE_NX | PAGE_PCD | PAGE_PWT)
 
@@ -29,7 +30,7 @@ static volatile uint8_t* pcie_config(uint32_t range, uint8_t bus,
     uint64_t address = entry->base + ((uint64_t)(bus - entry->first_bus) << 20)
                      + ((uint64_t)device << 15) + ((uint64_t)function << 12);
     mmu_identity_map_range(address, PAGE_SIZE_4K, MMIO_FLAGS);
-    return (volatile uint8_t*)address;
+    return (volatile uint8_t*)mem_phys_to_virt(address);
 }
 
 void pci_init(void)

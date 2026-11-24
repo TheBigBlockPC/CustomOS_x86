@@ -87,9 +87,13 @@ struct xhci_device {
 struct xhci_controller {
     xhci_controller_t* next;
     volatile uint8_t* base;
+    uint64_t base_phys;
     volatile uint8_t* operational;
+    uint64_t operational_phys;
     volatile uint8_t* runtime;
+    uint64_t runtime_phys;
     volatile uint8_t* doorbell;
+    uint64_t doorbell_phys;
     uint8_t max_slots, max_ports;
     uint16_t max_interrupters, version, scratchpad_count;
     uint8_t context_size;
@@ -154,11 +158,14 @@ static bool xhci_read_capabilities(xhci_controller_t* hc)
         params2 == 0xFFFFFFFFU || hcc == 0xFFFFFFFFU ||
         dboff == 0xFFFFFFFFU || rtsoff == 0xFFFFFFFFU ||
         caplength < 0x20 || (caplength & 3)) return false;
-
+    
     hc->version = cap >> 16;
-    hc->operational = hc->base + caplength;
-    hc->doorbell = hc->base + (dboff & ~3U);
-    hc->runtime = hc->base + (rtsoff & ~31U);
+    hc->operational_phys = hc->base_phys + caplength;
+    hc->operational = (volatile uint8_t*)mem_phys_to_virt(hc->operational_phys);
+    hc->doorbell_phys = hc->base_phys + (dboff & ~3U);
+    hc->doorbell = (volatile uint8_t*)mem_phys_to_virt(hc->doorbell_phys);
+    hc->runtime_phys = hc->base_phys + (rtsoff & ~31U);
+    hc->runtime = (volatile uint8_t*)mem_phys_to_virt(hc->runtime_phys);
     hc->max_slots = params1 & 0xFFU;
     hc->max_interrupters = (params1 >> 8) & 0x7FFU;
     hc->max_ports = (params1 >> 24) & 0xFFU;
@@ -166,10 +173,10 @@ static bool xhci_read_capabilities(xhci_controller_t* hc)
     hc->context_size = (hcc & (1U << 2)) ? 64 : 32;
     hc->scratchpad_count = (((params2 >> 21) & 0x1FU) << 5) |
                             ((params2 >> 27) & 0x1FU);
-
+    
+    
     /* Runtime interrupter zero and doorbells are mapped during ring setup. */
-    xhci_map_mmio(hc->operational, 0, 0x40);
-
+    xhci_map_mmio((volatile uint8_t*)hc->operational_phys, 0, 0x40);
     con_write("xHCI version: ", 0x07);
     print_uint64_full(hc->version);
     con_write("\n  Slots: ", 0x07);
@@ -189,9 +196,9 @@ static bool xhci_read_capabilities(xhci_controller_t* hc)
 
 static void xhci_list_ports(xhci_controller_t* hc)
 {
-    xhci_map_mmio(hc->operational, XHCI_PORT_BASE,
+    xhci_map_mmio((volatile uint8_t*)hc->operational_phys, XHCI_PORT_BASE,
                   (uint64_t)hc->max_ports * XHCI_PORT_STRIDE);
-
+    
     for (uint32_t i = 0; i < hc->max_ports; i++) {
         uint32_t offset = XHCI_PORT_BASE + i * XHCI_PORT_STRIDE;
         uint32_t status = xhci_read32(hc->operational, offset);
@@ -218,15 +225,15 @@ static bool xhci_take_ownership(xhci_controller_t* hc)
     uint32_t hcc = xhci_read32(hc->base, XHCI_HCCPARAMS1);
     if (hcc == 0xFFFFFFFFU) return false;
     uint32_t offset = (hcc >> 16) * 4U;
-
+    
     /* xECP is an absolute DWORD offset; Next is a relative DWORD offset. */
     for (uint32_t i = 0; offset && i < 256; i++) {
-        xhci_map_mmio(hc->base, offset, 4);
+        xhci_map_mmio((volatile uint8_t*)hc->base_phys, offset, 4);
         uint32_t cap = xhci_read32(hc->base, offset);
         if (cap == 0xFFFFFFFFU) return false;
 
         if ((cap & 0xFFU) == XHCI_EXT_LEGACY) {
-            xhci_map_mmio(hc->base, offset + 4, 4);
+            xhci_map_mmio((volatile uint8_t*)hc->base_phys, offset + 4, 4);
             xhci_write32(hc->base, offset, cap | XHCI_OS_OWNED);
             if (!xhci_wait(hc->base, offset,
                            XHCI_BIOS_OWNED | XHCI_OS_OWNED,
@@ -252,7 +259,7 @@ static bool xhci_take_ownership(xhci_controller_t* hc)
         }
         offset += next * 4U;
     }
-
+    
     if (offset) return false;  /* Malformed/overlong capability list. */
     con_write("xHCI: no legacy ownership capability\n", 0x07);
     return true;
@@ -262,7 +269,7 @@ static bool xhci_protocols(xhci_controller_t* hc)
 {
     uint32_t offset = (xhci_read32(hc->base, XHCI_HCCPARAMS1) >> 16) * 4U;
     for (uint32_t i = 0; offset && i < 256; i++) {
-        xhci_map_mmio(hc->base, offset, 16);
+        xhci_map_mmio((volatile uint8_t*)hc->base_phys, offset, 16);
         uint32_t cap = xhci_read32(hc->base, offset);
         if (cap == 0xFFFFFFFFU) return false;
         if ((cap & 0xFFU) == 2) { /* Supported Protocol capability. */
@@ -461,9 +468,9 @@ static bool xhci_start(xhci_controller_t* hc)
     erst[0] = hc->event_page;
     erst[1] = RING_ENTRIES; /* Segment size DWORD, followed by a reserved DWORD. */
     hc->event_cycle = 1;
-    xhci_map_mmio(hc->runtime, 0, 0x40);
-    xhci_map_mmio(hc->doorbell, 0, ((uint64_t)hc->max_slots + 1) * 4);
-    xhci_map_mmio(hc->operational, XHCI_PORT_BASE,
+    xhci_map_mmio((volatile uint8_t*)hc->runtime_phys, 0, 0x40);
+    xhci_map_mmio((volatile uint8_t*)hc->doorbell_phys, 0, ((uint64_t)hc->max_slots + 1) * 4);
+    xhci_map_mmio((volatile uint8_t*)hc->operational_phys, XHCI_PORT_BASE,
                    (uint64_t)hc->max_ports * XHCI_PORT_STRIDE);
     xhci_write32(hc->runtime, 0x20, 1); /* Clear IP, leave interrupt enable off. */
     xhci_write32(hc->runtime, 0x24, 0);
@@ -829,7 +836,8 @@ static bool xhci_init_controller(xhci_controller_t* hc, uint32_t id)
 {
     uint64_t bar = pcie_get_device_bar(id, 0);
     if (!bar) return false;
-    hc->base = (volatile uint8_t*)bar;
+    hc->base_phys = bar;
+    hc->base = (volatile uint8_t*)mem_phys_to_virt(bar);
     con_write("xHCI BAR0: ", 0x07);
     print_uint64_full(bar);
     con_write("\n", 0x07);
