@@ -4,6 +4,7 @@
 #include "interrupts/interrupts.h"
 #include "util.h"
 #include "display_mgr.h"
+#include "usermode.h"
 
 void panic(char* message){
     __asm__ volatile("cli" ::: "memory");
@@ -50,6 +51,15 @@ static char* crashes[] = {
     "Security Exception",
     "Reserved"
 };
+extern void resume_kernel();
+
+void on_crash(){
+    if(is_running_user()){
+        resume_kernel();
+    }else{
+        panic("exception");
+    }
+}
 
 void exception_dump(exception_frame_t *f)
 {
@@ -70,7 +80,8 @@ void exception_dump(exception_frame_t *f)
         con_write("Fault Address: ", 0x07);
         print_uint64_full(f->cr2);
         con_write("\n", 0x07);
-        panic("exception");
+        resume_kernel();
+        on_crash();
     }
 
     con_write("\n---------------- CPU STATE ----------------\n", 0x07);
@@ -186,7 +197,7 @@ void exception_dump(exception_frame_t *f)
     print_uint64_full((uint64_t)f->fx_state);
     con_write("\n", 0x07);
     con_write("===============================================\n", 0x07);
-    panic("exception");
+    on_crash();
 }
 
 void setup_default_exceptionhanders(){

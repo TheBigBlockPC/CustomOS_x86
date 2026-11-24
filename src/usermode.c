@@ -43,7 +43,7 @@ void um_create_segment(uint64_t user_base, void* data, uint64_t size, uint64_t f
     allocations[alloc_index].size = size;
     alloc_index++;
 }
-
+/*
 void um_mmap(uint64_t user_base, void* data, uint64_t size, uint64_t flags){
     uint64_t n_pages = int_div_round_up(size,PAGE_SIZE_4K);
     for(uint64_t i=0;i<n_pages;i++){
@@ -57,7 +57,7 @@ void um_mmap(uint64_t user_base, void* data, uint64_t size, uint64_t flags){
     allocations[alloc_index].user_va = user_base;
     allocations[alloc_index].size = size;
     alloc_index++;
-}
+}*/
 
 void um_dealloc(){
     for(int i=0;i<alloc_index;i++){
@@ -80,16 +80,22 @@ extern void resume_kernel();
 extern const uint8_t user_program_start[];
 extern const uint8_t user_program_end[];
 uint64_t kernel_saved_rsp = 0;
-
+bool running_user = false;
 void um_eexecute(uint64_t entry){
     uint8_t* user_stack = (uint8_t*)usr_allocate_kernel(PAGE_SIZE_4K,USER_STACK_VA,PAGE_RW | PAGE_USER | PAGE_NX);
+    running_user = true;
     enter_user(
         entry,
         USER_STACK_VA + PAGE_SIZE_4K
     );
+    running_user = false;
     unmap_range(USER_STACK_VA,PAGE_SIZE_4K);
     vm_free(user_stack);
     um_dealloc();
+}
+
+bool is_running_user(){
+    return running_user;
 }
 
 void um_test(){

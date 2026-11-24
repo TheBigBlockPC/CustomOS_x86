@@ -7,6 +7,8 @@
 #define SYS_ADD     2
 #define SYS_EXIT    3
 #define SYS_GFX     4
+#define SYS_ALLOC   5
+#define SYS_FREE    6
 //#define SYS_PRESENT 5
 
 static inline uint64_t syscall2(
@@ -58,6 +60,25 @@ static inline void sys_gfx(
     syscall2(
         SYS_GFX,
         (uint64_t)fb_desc,
+        0
+    );
+}
+static inline void sys_alloc(
+    uint64_t size
+) {
+    syscall2(
+        SYS_ALLOC,
+        size,
+        0
+    );
+}
+
+static inline void sys_free(
+    void* addr
+) {
+    syscall2(
+        SYS_FREE,
+        (uint64_t)addr,
         0
     );
 }

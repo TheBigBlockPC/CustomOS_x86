@@ -4,11 +4,14 @@
 #include "display_mgr.h"
 #include "usermode.h"
 #include "paging.h"
+#include "user_heap.h"
 
 #define SYS_WRITE   1
 #define SYS_ADD     2
 #define SYS_EXIT    3
 #define SYS_GFX     4
+#define SYS_ALLOC   5
+#define SYS_FREE    6
 //#define SYS_PRESENT 5
 
 #define SYSCALL_STACK_SIZE (16 * 1024)
@@ -134,8 +137,8 @@ static uint64_t sys_gfx(
     uint16_t h = fb.h;
     fb_desc->w = w;
     fb_desc->h = h;
-    fb_desc->fb = (uint32_t*)USER_FB_VA;
-    um_mmap(USER_FB_VA,(void*)(fb.fb), w * h * 4, PAGE_RW | PAGE_NX | PAGE_USER);
+    fb_desc->fb = (uint32_t*)um_mmap((uint64_t)(fb.fb), w * h * 4, PAGE_RW | PAGE_NX | PAGE_USER);
+    
     return 0;
 }
 
@@ -159,6 +162,11 @@ uint64_t syscall_dispatch(
             //reserved
         case SYS_GFX:
             return sys_gfx(arg0);
+        case SYS_ALLOC:
+            return um_alloc(arg0);
+        case SYS_FREE:
+            um_free(arg0);
+            return 0;
         /*case SYS_PRESENT:
             present();
             return 0;*/

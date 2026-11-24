@@ -4,6 +4,7 @@
 #include "elf64.h"
 #include "usermode.h"
 #include "paging.h"
+#include "user_heap.h"
 
 typedef struct {
     char magic[4];
@@ -212,6 +213,9 @@ void parse_ELF(char* data,uint64_t filesize){
         con_write("ELF loading FAILED\n",0x01);
         um_dealloc();
     }else{
+        set_heap_base(last_top);
+        um_heap_init();
         um_eexecute(header->program_entry_address);
+        um_heap_dealloc();
     }
 }
