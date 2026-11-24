@@ -23,6 +23,8 @@ typedef struct vm_region {
     uint64_t size;
     struct vm_region* next;
     struct vm_region* prev;
+    uint8_t flags;
+    uint16_t alignment;
 } vm_region_t;
 
 typedef struct vm_region_page_header {
@@ -128,8 +130,10 @@ static vm_region_t* insert_region_after(
     vm_region_t* prev,
     uint64_t base,
     uint64_t size,
-    alloc_state state)
-{
+    alloc_state state,
+    uint8_t flags,
+    uint16_t alignment
+){
     vm_region_page_t* header = genisis_page;
     while(header->header.used_count >= VM_REGIONS_PER_PAGE){
         vm_region_page_t* next = header->header.next;
@@ -146,7 +150,8 @@ static vm_region_t* insert_region_after(
     region->base = base;
     region->size = size;
     region->state = state;
-
+    region->flags = flags;
+    region->alignment = alignment;
     region->prev = prev;
     region->next = prev->next;
 
@@ -182,7 +187,7 @@ void allocate_more_metadata(){
     }
 }
 
-void* vm_alloc(uint64_t size, uint64_t alignment, uint8_t flags)
+void* vm_alloc(uint64_t size, uint16_t alignment, uint8_t flags)
 {
     if (!size)
         return 0;
@@ -344,7 +349,9 @@ void* vm_alloc(uint64_t size, uint64_t alignment, uint8_t flags)
                 last_block,
                 base,
                 size,
-                VM_ALLOC_USED
+                VM_ALLOC_USED,
+                flags,
+                alignment
             );
 
         } else {
@@ -363,7 +370,9 @@ void* vm_alloc(uint64_t size, uint64_t alignment, uint8_t flags)
                 block,
                 base + size,
                 free_padding,
-                VM_ALLOC_FREE
+                VM_ALLOC_FREE,
+                0,
+                0
             );
         }
 
@@ -376,7 +385,9 @@ void* vm_alloc(uint64_t size, uint64_t alignment, uint8_t flags)
                 last_block,
                 raw_base,
                 alignment_padding,
-                VM_ALLOC_FREE
+                VM_ALLOC_FREE,
+                0,
+                0
             );
         }
 
@@ -385,7 +396,9 @@ void* vm_alloc(uint64_t size, uint64_t alignment, uint8_t flags)
             last_block,
             base,
             size,
-            VM_ALLOC_USED
+            VM_ALLOC_USED,
+            flags,
+            alignment
         );
     }
     allocate_more_metadata();
@@ -534,7 +547,23 @@ void vm_free(void* addr)
     // TODO: Merge adjacent free regions.
 }
 
+void* vm_realloc(void* addr, uint64_t new_size){
+    if (!addr)
+        return 0;
 
+    uint64_t va = (uint64_t)addr;
+
+    vm_region_t* block = &genisis_page->regions[0];
+    while (block && block->base != va)
+        block = block->next;
+    
+    void* new_memory = vm_alloc(new_size,block->alignment,block->flags);
+    uint64_t old_size = block->size;
+    uint64_t bytes_to_copy = get_min(old_size,new_size);
+    memory_copy(new_memory,addr,bytes_to_copy);
+    vm_free(addr);
+    return new_memory;
+}
 // ============================================================
 // Debug output
 // ============================================================

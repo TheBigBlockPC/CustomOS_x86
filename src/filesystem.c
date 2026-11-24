@@ -154,7 +154,7 @@ FS_fd_t get_directory_desc(
     uint8_t* page = block_storage_read_block(0, lba);
     char prepared_name[8];
     memory_set(&prepared_name[0],8,' ');
-    for (int i = 0; name[i]; i++) {
+    for (int i = 0; name[i] && i<8; i++) {
         //if (i == 8) return; /* Short names only; never overwrite the stack. */
         prepared_name[i] = name[i];
     }
@@ -253,8 +253,10 @@ void fs_exec(int64_t cluster, char *name){
     con_write(name,0x07);
     con_write("\n",0x07);
     FS_fd_t desc = get_directory_desc(&metadata,cluster,name);
+    con_write("reading data\n",0x07);
     char* data = vm_alloc(desc.file_size+1,VM_NULL,VM_FLAGS_DEFAULT);
     read_file(&metadata,desc.target_cluser,data,desc.file_size);
+    con_write("executing\n",0x07);
     parse_ELF(data,desc.file_size);
     vm_free(data);
 }

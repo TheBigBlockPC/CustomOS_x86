@@ -1,0 +1,47 @@
+#include "types.h"
+#include "vmm.h"
+#include "util.h"
+#include "dynamic_list.h"
+
+#define MIN_CAPACITY 8
+
+dynamic_list_t create_dynamic_list(uint64_t element_size){
+    dynamic_list_t list;
+    list.capacity = MIN_CAPACITY;
+    list.element_size = element_size;
+    list.count = 0;
+    list.data = vm_alloc(element_size * MIN_CAPACITY,0,0);
+    return list;
+}
+
+void list_push_element(dynamic_list_t* list, void* element){
+    if(list->count == list->capacity){
+        list->capacity *= 2;
+        list->data = vm_realloc(list->data,list->capacity * list->element_size);
+    }
+    memory_copy(list->data + (list->count * list->element_size),element,list->element_size);
+    list->count++;
+}
+
+void list_pop_element(dynamic_list_t* list){
+    list->count--;
+    if(list->count < list->capacity/4){
+        list->capacity /= 2;
+        if(list->capacity < MIN_CAPACITY){
+            list->capacity = MIN_CAPACITY;
+        }
+        list->data = vm_realloc(list->data,list->capacity * list->element_size);
+    }
+}
+
+void list_remove_element(dynamic_list_t* list,uint64_t index){
+    if(index == list->count-1){
+        list_pop_element(list);
+        return;
+    }
+    void* dist = list->data + index * list->element_size;
+    void* src = list->data + (index+1) * list->element_size;
+    uint64_t n_bytes = (list->count - index -1) * list->element_size;
+    memory_copy(dist,src,n_bytes);
+    list_pop_element(list);
+}

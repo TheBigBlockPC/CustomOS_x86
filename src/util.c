@@ -139,3 +139,18 @@ void print_uint64_dec(uint64_t val)
     } while (val);
     con_write(buffer + position, 0x07);
 }
+
+uint64_t get_min(uint64_t a, uint64_t b){
+    if(a < b){
+        return a;
+    }else{
+        return b;
+    }
+}
+uint64_t get_max(uint64_t a, uint64_t b){
+    if(a > b){
+        return a;
+    }else{
+        return b;
+    }
+}

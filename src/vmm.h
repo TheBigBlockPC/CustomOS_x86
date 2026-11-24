@@ -12,7 +12,8 @@
 #define VM_FLAGS_FULL_PAGES 1
 
 void vmm_init();
-void* vm_alloc(uint64_t size, uint64_t alignment, uint8_t flags);
+void* vm_alloc(uint64_t size, uint16_t alignment, uint8_t flags);
 void vm_free(void* addr);
 void print_alloc();
+void* vm_realloc(void* addr, uint64_t new_size);
 #endif
