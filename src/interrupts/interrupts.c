@@ -3,6 +3,7 @@
 #include "../console.h"
 #include "../util.h"
 #include "../panic.h"
+#include "../process.h"
 
 _Static_assert(sizeof(exception_fx_state_t) == 512, "FXSAVE frame size");
 _Static_assert(__builtin_offsetof(exception_frame_t, cr0) == 64, "CR0 assembly offset");
@@ -95,13 +96,17 @@ static void idt_set_entry(uint8_t index, void (*handler)(void))
     idt[index].zero     = 0;
 }
 
-void interrupts_dispatch(uint8_t index)
+exception_frame_t* interrupts_dispatch(exception_frame_t* frame)
 {
-    isr_t handler = handlers[index];
+    isr_t handler = handlers[frame->vector];
 
     if (handler != 0) {
         handler();
     }
+    if(scheduler_requested()){
+        return scheduler_switch(frame);
+    }
+    return frame;
 }
 
 extern void (*interrupt_stub_table[256])(void);

@@ -122,7 +122,6 @@ void mem_free_page(uint64_t address)
     if (!memory_initialized || !address || (address & (PAGE_SIZE - 1)) ||
         address / PAGE_SIZE >= highest_page) {
         con_write("mem_free_page: invalid address\n", 0x01);
-        return;
     }
     bool managed = false;
     for (size_t i = 0; i < free_range_count; i++) {

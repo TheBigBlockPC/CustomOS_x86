@@ -15,6 +15,7 @@ dynamic_list_t create_dynamic_list(uint64_t element_size){
 }
 
 void list_push_element(dynamic_list_t* list, void* element){
+    if(!list->data) return;
     if(list->count == list->capacity){
         list->capacity *= 2;
         list->data = vm_realloc(list->data,list->capacity * list->element_size);
@@ -24,8 +25,10 @@ void list_push_element(dynamic_list_t* list, void* element){
 }
 
 void list_pop_element(dynamic_list_t* list){
+    if(!list->data) return;
+    if(list->count == 0) return;
     list->count--;
-    if(list->count < list->capacity/4){
+    if(list->count < list->capacity/4 && list->capacity > MIN_CAPACITY){
         list->capacity /= 2;
         if(list->capacity < MIN_CAPACITY){
             list->capacity = MIN_CAPACITY;
@@ -35,8 +38,12 @@ void list_pop_element(dynamic_list_t* list){
 }
 
 void list_remove_element(dynamic_list_t* list,uint64_t index){
+    if(!list->data) return;
     if(index == list->count-1){
         list_pop_element(list);
+        return;
+    }
+    if(index < 0 || index >= list->count){
         return;
     }
     void* dist = list->data + index * list->element_size;
@@ -44,4 +51,10 @@ void list_remove_element(dynamic_list_t* list,uint64_t index){
     uint64_t n_bytes = (list->count - index -1) * list->element_size;
     memory_copy(dist,src,n_bytes);
     list_pop_element(list);
+}
+
+void list_destroy(dynamic_list_t* list){
+    if(!list->data) return;
+    vm_free(list->data);
+    list->element_size = 0;
 }

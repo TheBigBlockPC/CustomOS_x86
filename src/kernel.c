@@ -16,11 +16,11 @@
 #include "hpet.h"
 #include "syscall.h"
 #include "tss.h"
-#include "usermode.h"
 #include "display_mgr.h"
 #include "interrupts/apic.h"
 #include "interrupts/lapic_timer.h"
 #include "drivers/usb/usb.h"
+#include "process.h"
 enum Mode {
     BASE,
     FILESYSTEM
@@ -45,10 +45,6 @@ void parse_kernel_shell(char* input){
         int a = 0;
         int b = 0;
         int c = a/b;
-        return;
-    }
-    if(str_start_comp(input,"EXEC")){
-        um_test();
         return;
     }
     fs_exec(bin_folder,input);
@@ -99,6 +95,7 @@ void on_input(char* input){
 
 void on_timer(void){
     present();
+    scheduler_request();
 }
 void k_main(){
     con_write("kernel running\n",0x07);
@@ -118,6 +115,7 @@ void k_main(){
     move_fb();
     page_table_t* test = mmu_create_address_space();
     mmu_set_address_space(test);
+    mmu_destroy_adress_spece(test);
     con_write("setting PML4 sucsessful",0x02);
     vmm_init();
     
@@ -134,6 +132,7 @@ void k_main(){
     setup_double_buffer();
     block_storage_init();
     syscall_init();
+    process_init();
 
     fs_init();
     fs_pos = fs_root();

@@ -35,7 +35,8 @@ _start:
 
     mov rax, 3
     syscall
-
+loop:
+    jmp loop
 
 message:
     .ascii "hello from ELF file\n"

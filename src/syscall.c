@@ -2,9 +2,9 @@
 #include "console.h"
 #include "util.h"
 #include "display_mgr.h"
-#include "usermode.h"
 #include "paging.h"
 #include "user_heap.h"
+#include "process.h"
 
 #define SYS_WRITE   1
 #define SYS_ADD     2
@@ -64,6 +64,11 @@ static inline void wrmsr(
 }
 
 extern void syscall_entry(void);
+
+void syscall_set_stack(uint64_t stack_top)
+{
+    syscall_kernel_rsp = stack_top;
+}
 
 // ============================================
 // SYS_WRITE
@@ -158,7 +163,11 @@ uint64_t syscall_dispatch(
         case SYS_ADD:
             return sys_add(arg0, arg1);
         case SYS_EXIT:
-            return (uint64_t)-1;
+            process_t* proc = process_get_current();
+            proc->state = PROCESS_TERMINATED;
+            proc->exit_code = arg0;
+            return 0; 
+        //return (uint64_t)-1;
             //reserved
         case SYS_GFX:
             return sys_gfx(arg0);

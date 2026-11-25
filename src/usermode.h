@@ -1,9 +1,0 @@
-#ifndef USERMODE_H
-#define USERMODE_H
-void um_create_segment(uint64_t user_base, void* data, uint64_t size, uint64_t flags, uint64_t padding);
-void um_eexecute(uint64_t entry);
-void um_dealloc();
-void um_test();
-bool is_running_user();
-//void um_mmap(uint64_t user_base, void* data, uint64_t size, uint64_t flags);
-#endif

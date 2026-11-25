@@ -8,11 +8,16 @@ int main(void) {
     uint32_t* fb = fb_desc.fb;
     uint16_t width = fb_desc.w;
     uint16_t height = fb_desc.h;
-    for(int y = 0;y<height;y++){
-        for(int x = 0;x<width;x++){
-            fb[x + y*width] = x+y;
+    uint32_t t=0;
+    while(1){
+        for(int y = 0;y<height;y++){
+            for(int x = 0;x<width;x++){
+                fb[x + y*width] = x+y+t;
+            }
         }
+        t++;
     }
+    while(1){};
     sys_free(fb);
     return 0;
 }

@@ -17,6 +17,7 @@ _start:
     mov edi, eax
     mov eax, 3
     syscall
-
+loop:
+    jmp loop
     # SYS_EXIT should never return
     ud2

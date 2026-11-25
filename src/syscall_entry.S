@@ -7,13 +7,13 @@
 .extern syscall_kernel_rsp
 .extern syscall_user_rsp
 .extern syscall_dispatch
-.extern resume_kernel
-syscall_exit:
-    # RDI = exit code
-    mov rax, rdi
+# .extern resume_kernel
+#syscall_exit:
+#    # RDI = exit code
+#    mov rax, rdi
 
-    # Transfer to the other assembly file.
-    jmp resume_kernel
+#    # Transfer to the other assembly file.
+#    jmp resume_kernel
 
 syscall_entry:
     # =========================================
@@ -28,8 +28,8 @@ syscall_entry:
     mov rsp, qword ptr [rip + syscall_kernel_rsp]
     
     # Check SYS_EXIT
-    cmp rax, 3
-    je syscall_exit
+    #cmp rax, 3
+    #je syscall_exit
     
     # =========================================
     # Construct IRETQ return frame

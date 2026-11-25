@@ -25,6 +25,10 @@ static bool canonical(uint64_t address)
 
 static void validate_mapping(uint64_t virt, uint64_t phys, uint64_t size, uint64_t flags)
 {
+    if (virt >= 0xFFFF800000000000ULL &&
+        (flags & PAGE_USER)) {
+        panic("MMU: user mapping in kernel space");
+    }
     if (!physical_mask) {
         uint32_t a, b, c, d;
         cpuid(0x80000000, &a, &b, &c, &d);
@@ -291,5 +295,27 @@ void mmu_destroy_adress_spece(page_table_t* PML4_ptr){
     if(active_PML4 == PML4_ptr){
         mmu_set_address_space(&PML4);
     }
-    mem_free_page((uint64_t)PML4_ptr);
+    for(int pml4_idx = 0;pml4_idx<256;pml4_idx++){
+        uint64_t entry_pml4 = active_PML4->entries[pml4_idx];
+        if(entry_pml4 == 0) continue;
+        page_table_t* PDP = mem_phys_to_virt(entry_pml4 & PAGE_TABLE_ADDR_MASK);
+        
+        for(int pdp_idx = 0;pdp_idx<512;pdp_idx++){
+            uint64_t entry_pdp = PDP->entries[pdp_idx];
+            if(entry_pdp == 0) continue;
+            page_table_t* PD = mem_phys_to_virt(entry_pdp & PAGE_TABLE_ADDR_MASK);
+            for(int pd_idx = 0;pd_idx<512;pd_idx++){
+                uint64_t entry_pd = active_PML4->entries[pd_idx];
+                if(entry_pd == 0) continue;
+                if(entry_pd & PAGE_HUGE) continue;
+                uint64_t pt_addr = entry_pd & PAGE_TABLE_ADDR_MASK;
+                mem_free_page(pt_addr);
+            }
+            mem_free_page(entry_pdp & PAGE_TABLE_ADDR_MASK);
+        }
+        mem_free_page(entry_pml4 & PAGE_TABLE_ADDR_MASK);
+    }
+    uint64_t phys;
+    virt_to_phys((uint64_t)active_PML4,&phys);
+    mem_free_page(phys);
 }

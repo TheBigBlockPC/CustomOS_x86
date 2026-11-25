@@ -78,8 +78,10 @@ interrupt_common:
     call exceptions_dispatch
     jmp 3f
 2:
-    movq 192(%r12), %rcx
+    /*movq 192(%r12), %rcx*/
+    movq %r12, %rcx
     call interrupts_dispatch
+    movq %rax, %r12
 3:
     cmpq $0, (%r12)
     je 4f

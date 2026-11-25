@@ -2,9 +2,11 @@
 #include "util.h"
 #include "console.h"
 #include "elf64.h"
-#include "usermode.h"
 #include "paging.h"
 #include "user_heap.h"
+#include "process.h"
+
+#define USER_STACK_VA 0x3200000ULL
 
 typedef struct {
     char magic[4];
@@ -71,6 +73,7 @@ uint64_t elf_to_page_flags(uint32_t flags) {
 
 static uint64_t last_top = 0;
 bool load_segment(
+    process_t* process,
     const char* data,
     const ELF_program_header_t* ph
 ) {
@@ -88,11 +91,12 @@ bool load_segment(
     last_top = (start+size) & ~(PAGE_SIZE_4K-1);
 
     uint64_t padding = start-page_aligned_start;
-    um_create_segment(page_aligned_start,(void*)(data+file_offset),size,flags,padding);
+    process_create_segment(process,page_aligned_start,(void*)(data+file_offset),size,flags,padding);
     return true;
 }
 
 bool load_program_headers(
+    process_t* process,
     const char* data,
     uint64_t size,
     const ELF_header_t* header
@@ -158,7 +162,7 @@ bool load_program_headers(
             valid_entry = true;
         }
 
-        if(!load_segment(data, ph))
+        if(!load_segment(process,data, ph))
             return false;
     }
     return valid_entry;
@@ -209,13 +213,43 @@ void parse_ELF(char* data,uint64_t filesize){
     con_write("\n",0x02);
 #endif
 
-    if(!load_program_headers(data,filesize,header)){
-        con_write("ELF loading FAILED\n",0x01);
-        um_dealloc();
-    }else{
-        set_heap_base(last_top);
-        um_heap_init();
-        um_eexecute(header->program_entry_address);
-        um_heap_dealloc();
+    process_t* process = process_create();
+
+    if (!process)
+        return;
+
+    // Preserve the currently active address space.
+    page_table_t* previous =
+        process_get_current()->pml4;
+
+    // Temporarily activate the new address space.
+    mmu_set_address_space(process->pml4);
+
+    if (!load_program_headers(process, data, filesize, header)) {
+        mmu_set_address_space(previous);
+
+        process_destroy(process);
+        return;
     }
+
+    // Initialize process-specific user memory.
+    process->user_stack_base = USER_STACK_VA;
+    process->user_stack_size = PAGE_SIZE_4K;
+
+    // Allocate and map the user stack.
+    process_create_user_stack(process);
+
+    // Prepare the initial CPU context.
+    process_init_context(
+        process,
+        header->program_entry_address,
+        process->user_stack_base +
+            process->user_stack_size
+    );
+
+    // Restore the previous address space.
+    mmu_set_address_space(previous);
+
+    // The scheduler can now execute the process.
+    process_make_ready(process);
 }
