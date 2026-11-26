@@ -97,6 +97,7 @@ void on_timer(void){
     present();
     scheduler_request();
 }
+
 void k_main(){
     con_write("kernel running\n",0x07);
 
@@ -132,7 +133,9 @@ void k_main(){
     setup_double_buffer();
     block_storage_init();
     syscall_init();
+
     process_init();
+    interrupts_set_isr(SCHEDULER_VECTOR, scheduler_request);
 
     fs_init();
     fs_pos = fs_root();

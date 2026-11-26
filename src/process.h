@@ -4,6 +4,8 @@
 #include "interrupts/interrupts.h"
 #include "dynamic_list.h"
 
+#define SCHEDULER_VECTOR 0x81
+
 typedef enum {
     PROCESS_CREATED,
     PROCESS_READY,

@@ -12,6 +12,7 @@
 #define SYS_GFX     4
 #define SYS_ALLOC   5
 #define SYS_FREE    6
+#define SYS_YIELD   7
 //#define SYS_PRESENT 5
 
 #define SYSCALL_STACK_SIZE (16 * 1024)
@@ -167,6 +168,7 @@ uint64_t syscall_dispatch(
         case SYS_EXIT:
             proc->state = PROCESS_TERMINATED;
             proc->exit_code = arg0;
+            asm volatile("int $0x81" ::: "memory");
             return 0; 
         //return (uint64_t)-1;
             //reserved
@@ -176,6 +178,9 @@ uint64_t syscall_dispatch(
             return um_alloc(proc,arg0);
         case SYS_FREE:
             um_free(proc,arg0);
+            return 0;
+        case SYS_YIELD:
+            asm volatile("int $0x81" ::: "memory");
             return 0;
         /*case SYS_PRESENT:
             present();

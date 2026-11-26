@@ -46,7 +46,10 @@ exception_frame_t* scheduler_switch(
     if(!sched_initialized) return frame;
     if(!current_process) panic("");
     current_process->context = frame;
-    if(current_process->state != PROCESS_TERMINATED) current_process->state = PROCESS_READY;
+    if(
+        current_process->state != PROCESS_TERMINATED &&
+        current_process->state != PROCESS_BLOCKED
+    ) current_process->state = PROCESS_READY;
 
     process_t* next = scheduler_get_next();
 
