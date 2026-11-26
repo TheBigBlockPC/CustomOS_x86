@@ -36,6 +36,16 @@ _start:
     mov rax, 3
     syscall
 loop:
+    mov rax, 1
+
+    # RDI = Pointer to message
+    lea rdi, [rip + message]
+
+    # RSI = Length of message
+    lea rsi, [rip + message_end]
+    sub rsi, rdi
+
+    syscall
     jmp loop
 
 message:

@@ -53,6 +53,32 @@ void list_remove_element(dynamic_list_t* list,uint64_t index){
     list_pop_element(list);
 }
 
+void list_insert_element(dynamic_list_t* list,uint64_t index, void* element){
+    if(!list->data) return;
+    if(index == list->count){
+        list_push_element(list,element);
+        return;
+    }
+    if(index < 0 || index > list->count){
+        return;
+    }
+    if(list->count == list->capacity){
+        list->capacity *= 2;
+        list->data = vm_realloc(list->data,list->capacity * list->element_size);
+    }
+
+    for(int i=list->count-1;i>=index;i--){
+        void* src = list->data + i * list->element_size;
+        void* dest = list->data + (i+1) * list->element_size;
+        memory_copy(dest,src,list->element_size);
+    }
+    memory_copy(
+        list->data + index * list->element_size,
+        element,
+        list->element_size
+    );
+}
+
 void list_destroy(dynamic_list_t* list){
     if(!list->data) return;
     vm_free(list->data);

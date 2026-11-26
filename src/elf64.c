@@ -3,8 +3,8 @@
 #include "console.h"
 #include "elf64.h"
 #include "paging.h"
-#include "user_heap.h"
 #include "process.h"
+#include "user_memory.h"
 
 #define USER_STACK_VA 0x3200000ULL
 
@@ -91,7 +91,7 @@ bool load_segment(
     last_top = (start+size) & ~(PAGE_SIZE_4K-1);
 
     uint64_t padding = start-page_aligned_start;
-    process_create_segment(process,page_aligned_start,(void*)(data+file_offset),size,flags,padding);
+    um_create_segment(process,page_aligned_start,(void*)(data+file_offset),size,flags,padding);
     return true;
 }
 

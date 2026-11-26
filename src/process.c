@@ -7,13 +7,7 @@
 #include "panic.h"
 #include "vmm.h"
 #include "process.h"
-#include "dynamic_list.h"
-
-typedef struct {
-    uint64_t user_va;
-    void* kernel_va;
-    uint64_t size;
-} um_alloc_t;
+#include "user_memory.h"
 
 static bool reschedule_requested = false;
 static bool sched_initialized = false;
@@ -52,7 +46,7 @@ exception_frame_t* scheduler_switch(
     if(!sched_initialized) return frame;
     if(!current_process) panic("");
     current_process->context = frame;
-    current_process->state = PROCESS_READY;
+    if(current_process->state != PROCESS_TERMINATED) current_process->state = PROCESS_READY;
 
     process_t* next = scheduler_get_next();
 
@@ -127,8 +121,7 @@ process_t* process_create(void)
         (uint64_t)process->kernel_stack +
         KERNEL_STACK_SIZE;
 
-        
-    process->segment_allocations = create_dynamic_list(sizeof(um_alloc_t));
+    um_init(process);
     return process;
 }
 
@@ -190,13 +183,6 @@ void process_create_user_stack(process_t* process){
     process->user_stack_kernel = proc_allocate_kernel(process->user_stack_size,process->user_stack_base,PAGE_RW | PAGE_USER | PAGE_NX);
 }
 
-void unmap_range(uint64_t base, uint64_t n_bytes){
-    uint64_t n_pages = int_div_round_up(n_bytes,PAGE_SIZE_4K);
-    for(uint64_t i=0;i<n_pages;i++){
-        mmu_unmap_4k(base+i*PAGE_SIZE_4K);
-    }
-}
-
 void process_destroy(process_t* process){
     if(process->prev){
         process->prev->next = process->next;
@@ -206,22 +192,15 @@ void process_destroy(process_t* process){
         vm_free(process->kernel_stack);
     }
     if(process->user_stack_kernel){
-        unmap_range(process->user_stack_base,process->user_stack_size);
+        //unmap_range(process->user_stack_base,process->user_stack_size);
         vm_free(process->user_stack_kernel);
     }
+    um_heap_dealloc(process);
+    dealloc_segments(process);
+    list_destroy(&process->segment_allocations);
     if(process->pml4){
         mmu_destroy_adress_spece(process->pml4);
     }
     list_destroy(&process->segment_allocations);
     vm_free(process);
-}
-
-void process_create_segment(process_t* process,uint64_t user_base, void* data, uint64_t size, uint64_t flags, uint64_t padding){
-    void* memory = proc_allocate_kernel(size+padding,user_base,flags);
-    memory_copy(memory+padding,data,size);
-    um_alloc_t segment;
-    segment.kernel_va = memory;
-    segment.user_va = user_base;
-    segment.size = size;
-    list_push_element(&process->segment_allocations,&segment);
 }

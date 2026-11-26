@@ -29,9 +29,10 @@ typedef struct process {
     uint64_t user_stack_base;
     uint64_t user_stack_size;
     void* user_stack_kernel;
-    //user_memory_t memory;
-
+    
     dynamic_list_t segment_allocations;
+    dynamic_list_t heap_allocations;
+    uint64_t heap_base;
 
     // Termination
     int64_t exit_code;
@@ -57,5 +58,5 @@ process_t* process_create(void);
 process_t* process_get_current();
 void process_create_user_stack(process_t* process);
 void process_destroy(process_t* process);
-void process_create_segment(process_t* process,uint64_t user_base, void* data, uint64_t size, uint64_t flags, uint64_t padding);
+void* proc_allocate_kernel(uint64_t size,uint64_t usr_base,uint64_t flags);
 #endif

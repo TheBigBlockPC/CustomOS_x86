@@ -3,7 +3,7 @@
 #include "util.h"
 #include "display_mgr.h"
 #include "paging.h"
-#include "user_heap.h"
+#include "user_memory.h"
 #include "process.h"
 
 #define SYS_WRITE   1
@@ -131,6 +131,7 @@ static uint64_t sys_add(
 // ============================================
 
 static uint64_t sys_gfx(
+    process_t* proc,
     uint64_t fb_desc_ptr
 ) {
     if (!valid_user_buffer(fb_desc_ptr, sizeof(fb_desc_ptr)))
@@ -142,7 +143,7 @@ static uint64_t sys_gfx(
     uint16_t h = fb.h;
     fb_desc->w = w;
     fb_desc->h = h;
-    fb_desc->fb = (uint32_t*)um_mmap((uint64_t)(fb.fb), w * h * 4, PAGE_RW | PAGE_NX | PAGE_USER);
+    fb_desc->fb = (uint32_t*)um_mmap(proc,(uint64_t)(fb.fb), w * h * 4, PAGE_RW | PAGE_NX | PAGE_USER);
     
     return 0;
 }
@@ -156,6 +157,7 @@ uint64_t syscall_dispatch(
     uint64_t arg0,
     uint64_t arg1
 ) {
+    process_t* proc = process_get_current();
     switch (number) {
         case SYS_WRITE:
             return sys_write(arg0, arg1);
@@ -163,18 +165,17 @@ uint64_t syscall_dispatch(
         case SYS_ADD:
             return sys_add(arg0, arg1);
         case SYS_EXIT:
-            process_t* proc = process_get_current();
             proc->state = PROCESS_TERMINATED;
             proc->exit_code = arg0;
             return 0; 
         //return (uint64_t)-1;
             //reserved
         case SYS_GFX:
-            return sys_gfx(arg0);
+            return sys_gfx(proc,arg0);
         case SYS_ALLOC:
-            return um_alloc(arg0);
+            return um_alloc(proc,arg0);
         case SYS_FREE:
-            um_free(arg0);
+            um_free(proc,arg0);
             return 0;
         /*case SYS_PRESENT:
             present();
